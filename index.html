@@ -261,7 +261,15 @@ const SEED = [
   {title:"Infill assemblage and redevelopment opportunities surfacing as greenfield deals stall",loc:'Durham',notes:"Infill assemblage · Redevelopment plays · Triangle market reset creating land opportunity",tag:'land',date:'2026-02-01',link:'https://www.triprop.com/2025-triangle-market-overview-and-2026-forecast-land/',source:'seed'},
   {title:"Avison Young brokers sale of five-building office park in Raleigh for $16M",loc:'Raleigh',notes:"$16M · Five-building office park · Avison Young · Raleigh",tag:'office',date:'2025-11-01',link:'https://www.avisonyoung.us/web/raleigh-durham',source:'seed'},
   {title:"CBRE brokers sale of EmergeOrtho Southpoint medical outpatient building — 35,171 SF in Durham",loc:'Durham',notes:"35,171 SF · EmergeOrtho Southpoint · Medical MOB/ASC · 7810 NC Hwy 751 · Sold to BGO",tag:'office',date:'2025-10-01',link:'https://www.cbre.com/offices/corporate/raleigh',source:'seed'},
-  {title:"Glenwood South restaurant launches new offerings — new F&B tenant activates corridor",loc:'Glenwood Ave',notes:"Glenwood South · New restaurant tenant · F&B retail activation along Glenwood Ave",tag:'retail',date:'2026-03-13',link:'https://www.bizjournals.com/triangle/news/commercial-real-estate',source:'seed'}
+  {title:"Glenwood South restaurant launches new offerings — new F&B tenant activates corridor",loc:'Glenwood Ave',notes:"Glenwood South · New restaurant tenant · F&B retail activation along Glenwood Ave",tag:'retail',date:'2026-03-13',link:'https://www.bizjournals.com/triangle/news/2026/03/13/raleigh-restaurant-roundup-vidrio-brunch-menu.html',source:'seed'},
+  {title:"Cary building with big-name tenant sold for $58M — Vigilant Holdings acquires Press Building",loc:'Cary',notes:"$58M · Press Building · Big-name anchor tenant · Vigilant Holdings acquires",tag:'office',date:'2026-03-13',link:'https://www.bizjournals.com/triangle/news/2026/03/13/cary-press-building-sold-vigilant-holdings.html',source:'seed'},
+  {title:"North Hills tower to have 20th-floor rooftop pool, 357 apartments — Kane Realty development",loc:'North Hills',notes:"357 apartments · 20th-floor rooftop pool · Kane Realty · North Hills mixed-use tower",tag:'development',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/raleigh-north-hills-tower-kane-realty-development.html',source:'seed'},
+  {title:"Former Amazon hub in Durham sold for $26M despite no tenants — Atlanta Property Group acquires vacant industrial site",loc:'Durham',notes:"$26M · Vacant · Former Amazon · Atlanta Property Group · Speculative industrial acquisition",tag:'industrial',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/atlanta-property-group-buys-durham-industrial-site.html',source:'seed'},
+  {title:"Eastcut Sandwich Bar signs lease at Waverly Place — third Triangle location heads to Cary",loc:'Cary',notes:"Eastcut Sandwich Bar · Third location · Waverly Place retail center · Cary",tag:'retail',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/eastcut-sandwich-bar-cary-waverly-place-lease.html',source:'seed'},
+  {title:"Beta Technologies hiring in Morrisville for next-gen electric aircraft program",loc:'Morrisville',notes:"Beta Technologies · Electric aircraft · Hiring campaign · Morrisville / RDU corridor",tag:'industrial',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/beta-technologies-hiring-morrisville-aircraft.html',source:'seed'},
+  {title:"RDU Airport weighs raising parking rates as capital project budget grows",loc:'RDU',notes:"RDU · Parking rate increase · Capital projects budget · Airport authority study",tag:'development',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/rdu-airport-parking-rates-budget-capital-projects.html',source:'seed'},
+  {title:"$50M industrial park project could boost Rocky Mount's economic prospects",loc:'Johnston County',notes:"$50M · Ruddell Group · Rocky Mount industrial park · Eastern NC economic development",tag:'industrial',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/ruddell-group-rocky-mount-industrial-park-building.html',source:'seed'},
+  {title:"NC State research aims for $1B enterprise — new leader targets defense partnerships and DOD funding",loc:'Raleigh',notes:"NC State · $1B research enterprise · Defense partnerships · DOD funding",tag:'development',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/ncstate-research-funding-defense-partnerships-dod.html',source:'seed'}
 ];
 
 const SEED_NEWS = [
@@ -281,7 +289,7 @@ let map, allStories=[], activeMarkers=[], activeFilter='all', activeDays='all';
 // ── Utils ──────────────────────────────────────────────────────
 function jitter(v){return v+(Math.random()-0.5)*0.014;}
 function fmtDate(ds){try{return new Date(ds).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}catch(e){return ds||'';}}
-function dateMs(ds){try{return new Date(ds).getTime();}catch(e){return 0;}}
+function dateMs(ds){try{if(!ds)return 0;const p=ds.split('-').map(Number);return new Date(p[0],p[1]-1,p[2],12,0,0).getTime();}catch(e){return 0;}}
 function findPlace(loc){
   if(!loc)return null;
   return PLACES.find(p=>p.name.toLowerCase()===loc.toLowerCase())||
@@ -369,7 +377,7 @@ async function refreshFeed(){
         params: {
           name: 'gmail_search_messages',
           arguments: {
-            q: '(from:mike@southatlanticsites.com subject:Fwd) OR (from:reply@news.bizjournals.com) newer_than:30d',
+            q: '(from:mike@southatlanticsites.com subject:Fwd) OR (from:reply@news.bizjournals.com) newer_than:60d',
             maxResults: 30
           }
         }
@@ -609,6 +617,21 @@ function renderAll(){
   const filtered=getFiltered();
   document.getElementById('story-count').textContent=filtered.length+' stories';
   document.querySelector('.stab[data-tab="stories"]').textContent='Feed ('+filtered.length+')';
+
+  // Show no-results message if filtered is empty
+  let emptyMsg = panel.querySelector('.empty-filter-msg');
+  if(filtered.length===0){
+    if(!emptyMsg){
+      emptyMsg = document.createElement('div');
+      emptyMsg.className='empty-filter-msg';
+      emptyMsg.style.cssText='padding:24px 16px;color:rgba(255,255,255,0.5);font-size:13px;text-align:center;';
+      panel.appendChild(emptyMsg);
+    }
+    const label = activeDays==='all'?'this filter':activeDays==='7'?'the last 7 days':activeDays==='30'?'the last 30 days':'the last 90 days';
+    emptyMsg.textContent = '0 stories match — no pins for '+label;
+  } else if(emptyMsg){
+    emptyMsg.remove();
+  }
 
   filtered.forEach(story=>{
     const tagKey=story.manual?'manual':story.tag;
