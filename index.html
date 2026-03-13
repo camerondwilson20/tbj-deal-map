@@ -406,55 +406,83 @@ async function refreshFeed(){
         const email = msgData?.result;
         if(!email) continue;
 
-        // Parse forwarded subject — strip "Fwd: " prefix
-        const rawSubject = email.headers?.Subject || '';
-        const subject = rawSubject.replace(/^(Fwd?:\s*)+/i,'').trim();
-        if(!subject) continue;
-
-        // Extract body text
+        // Extract body and date
         const body = email.body || '';
-
-        // Extract TBJ article URL from body (bizjournals link.click URLs decode to real URLs)
-        const urlMatch = body.match(/https?:\/\/(?:www\.)?bizjournals\.com\/triangle\/news\/[^\s"<>)]+/);
-        const link = urlMatch ? urlMatch[0] : 'https://www.bizjournals.com/triangle/news/commercial-real-estate';
-
-        // Extract snippet (first paragraph after forwarded header)
-        const snippetMatch = body.match(/Forwarded message[\s\S]{0,300}?\n\n([\s\S]{20,400}?)(?=\n\n|READ MORE|Unsubscribe|$)/i);
-        const notes = snippetMatch ? snippetMatch[1].replace(/\s+/g,' ').trim().substring(0,200) : subject;
-
-        // Date from email
         const dateIso = email.headers?.Date ? new Date(email.headers.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
 
-        // Dedup check
-        const titleKey = subject.toLowerCase().substring(0,60);
-        if(existing.has(titleKey)) continue;
-        existing.add(titleKey);
+        // Decode a base64-encoded TBJ redirect URL to get the real article URL
+        function decodeTBJUrl(b64) {
+          try {
+            const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+            const decoded = atob(padded);
+            return decoded.split('?')[0]; // strip UTM params
+          } catch(e) { return null; }
+        }
 
-        const fullText = subject + ' ' + body.substring(0,1000);
-        const detectedLoc = detectLoc(fullText);
+        // Parse digest: extract (headline, url) pairs from the email body
+        // TBJ format: headline text on one line, then <url> on next line(s)
+        const digestStories = [];
+        const lines = body.split('\n').map(l => l.trim()).filter(Boolean);
 
-        if(detectedLoc) {
-          // Has a mappable Triangle location — pin it on the map
-          allStories.unshift({
-            title: subject.substring(0,160),
-            link,
-            notes: notes.substring(0,200),
-            tag: detectTag(fullText),
-            loc: detectedLoc,
-            date: dateIso,
-            source: 'gmail',
-            manual: false,
-          });
-          added++;
-        } else {
-          // No Triangle location detected — route to News tab
-          addNewsStory({
-            title: subject.substring(0,160),
-            link,
-            notes: notes.substring(0,200),
-            tag: detectTag(fullText),
-            date: dateIso,
-          });
+        for(let i = 0; i < lines.length - 1; i++) {
+          const line = lines[i];
+          const nextLine = lines[i+1] || '';
+
+          // Look for a TBJ click redirect URL
+          const urlMatch = nextLine.match(/https?:\/\/link\.bizjournals\.com\/click\/[^/]+\/([A-Za-z0-9+/=_-]+)\//);
+          if(!urlMatch) continue;
+
+          const realUrl = decodeTBJUrl(urlMatch[1]);
+          if(!realUrl || !realUrl.includes('bizjournals.com/triangle/news/')) continue;
+
+          // The line before the URL is the headline — skip navigation/boilerplate
+          const skipPhrases = ['Read full story', 'View in Browser', 'Quick Links', 'Unsubscribe', 'Manage Preferences', 'UPCOMING EVENTS', 'Read more', 'START YOUR FREE TRIAL'];
+          if(skipPhrases.some(s => line.includes(s))) continue;
+          if(line.length < 10 || line.startsWith('<') || line.startsWith('http')) continue;
+
+          digestStories.push({ title: line, link: realUrl });
+        }
+
+        // If no digest stories found, fall back to subject line + first bizjournals URL
+        if(!digestStories.length) {
+          const rawSubject = email.headers?.Subject || '';
+          const subject = rawSubject.replace(/^(Fwd?:\s*)+/i,'').trim();
+          if(subject) {
+            const directUrl = body.match(/https?:\/\/(?:www\.)?bizjournals\.com\/triangle\/news\/[^\s"<>)]+/);
+            digestStories.push({ title: subject, link: directUrl ? directUrl[0] : 'https://www.bizjournals.com/triangle/news/commercial-real-estate' });
+          }
+        }
+
+        // Process each story from the digest
+        for(const ds of digestStories) {
+          const titleKey = ds.title.toLowerCase().substring(0,60);
+          if(existing.has(titleKey)) continue;
+          existing.add(titleKey);
+
+          const fullText = ds.title;
+          const detectedLoc = detectLoc(fullText);
+
+          if(detectedLoc) {
+            allStories.unshift({
+              title: ds.title.substring(0,160),
+              link: ds.link,
+              notes: '',
+              tag: detectTag(fullText),
+              loc: detectedLoc,
+              date: dateIso,
+              source: 'gmail',
+              manual: false,
+            });
+            added++;
+          } else {
+            addNewsStory({
+              title: ds.title.substring(0,160),
+              link: ds.link,
+              notes: '',
+              tag: detectTag(fullText),
+              date: dateIso,
+            });
+          }
         }
       }catch(e){ console.warn('Failed to read message', msg.id, e.message); }
     }
