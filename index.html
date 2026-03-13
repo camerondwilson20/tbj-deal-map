@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TBJ Triangle Deal Map — South Atlantic Sites</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --navy:#0C2340;--navy-mid:#185FA5;--navy-light:#E6F1FB;
+  --gold:#C9A84C;--ink:#1C1C1E;--muted:#6B6B70;
+  --border:#E2E2E6;--surface:#FAFAFA;--white:#FFFFFF;
+  --red:#A32D2D;--green:#1B5E20;
+  --ti-bg:#FFF3E0;--ti-fg:#7A3B00;
+  --td-bg:#F0F7E6;--td-fg:#2A5A0A;
+  --to-bg:#E6F1FB;--to-fg:#0C447C;
+  --tr-bg:#FCE4EC;--tr-fg:#880E4F;
+  --tl-bg:#F3F0E6;--tl-fg:#4A3B00;
+  --tm-bg:#FDF6E3;--tm-fg:#7A5C00;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);height:100vh;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100vh;background:var(--surface)}
+
+/* topbar */
+#topbar{display:flex;align-items:center;gap:8px;padding:0 14px;height:50px;background:var(--navy);border-bottom:2px solid var(--gold);flex-shrink:0;flex-wrap:wrap}
+#logo{font-size:12px;font-weight:600;color:#fff;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;margin-right:4px}
+#logo span{color:var(--gold)}
+.fbtn{font-size:11px;padding:3px 11px;border-radius:20px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.65);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.12s;white-space:nowrap}
+.fbtn:hover{background:rgba(255,255,255,0.1);color:#fff}
+.fbtn.active{background:var(--gold);color:var(--navy);border-color:var(--gold);font-weight:600}
+#date-filter{font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);cursor:pointer;font-family:'DM Sans',sans-serif}
+#refresh-btn{margin-left:4px;font-size:11px;padding:3px 11px;border-radius:6px;border:1px solid var(--gold);background:transparent;color:var(--gold);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.12s;white-space:nowrap}
+#refresh-btn:hover{background:var(--gold);color:var(--navy)}
+#refresh-btn:disabled{opacity:0.4;cursor:not-allowed}
+#story-count{font-size:11px;color:rgba(255,255,255,0.4);margin-left:auto;font-family:'DM Mono',monospace;white-space:nowrap}
+
+/* main */
+#main{display:flex;flex:1;overflow:hidden}
+#map{flex:1;height:100%}
+
+/* sidebar */
+#sidebar{width:310px;display:flex;flex-direction:column;background:var(--white);border-left:1px solid var(--border);overflow:hidden}
+#sidebar-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)}
+.stab{flex:1;padding:10px 4px;text-align:center;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;font-family:'DM Sans',sans-serif;letter-spacing:0.03em;transition:all 0.12s}
+.stab:hover{color:var(--navy)}
+.stab.active{color:var(--navy);border-bottom-color:var(--gold)}
+
+/* story list */
+#story-panel{flex:1;overflow-y:auto}
+.story-card{padding:10px 13px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;position:relative}
+.story-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background 0.12s}
+.story-card:hover{background:#F5F5F8}
+.story-card.hl{background:var(--navy-light)}
+.story-card.hl::before{background:var(--gold)}
+.stag{display:inline-block;font-size:9px;padding:2px 7px;border-radius:10px;margin-bottom:3px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;font-family:'DM Mono',monospace}
+.t-industrial{background:var(--ti-bg);color:var(--ti-fg)}
+.t-development{background:var(--td-bg);color:var(--td-fg)}
+.t-office{background:var(--to-bg);color:var(--to-fg)}
+.t-retail{background:var(--tr-bg);color:var(--tr-fg)}
+.t-land{background:var(--tl-bg);color:var(--tl-fg)}
+.t-manual{background:var(--tm-bg);color:var(--tm-fg)}
+.stitle{font-size:12px;font-weight:500;color:var(--ink);line-height:1.4;margin-bottom:2px}
+.smeta{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
+.snotes{font-size:11px;color:#333;margin-top:4px;line-height:1.5;border-left:2px solid var(--gold);padding-left:7px}
+.slink{font-size:11px;color:var(--navy-mid);text-decoration:none;font-weight:600;display:inline-block;margin-top:4px}
+.slink:hover{text-decoration:underline}
+.ssource{font-size:10px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace}
+#empty-msg{padding:28px 16px;text-align:center;color:var(--muted);font-size:12px;line-height:1.8}
+
+/* add panel */
+#add-panel{display:none;flex:1;overflow-y:auto;padding:14px}
+#news-panel{display:none;flex:1;overflow-y:auto}
+.news-card{padding:10px 13px;border-bottom:1px solid var(--border)}
+.news-card h4{font-size:12px;font-weight:600;color:var(--navy);margin:0 0 4px;line-height:1.4}
+.news-card .news-meta{font-size:10px;color:var(--muted);margin-bottom:4px}
+.news-card .news-notes{font-size:11px;color:var(--ink);line-height:1.4}
+.news-card a{font-size:10px;color:var(--gold);font-weight:600;text-decoration:none}
+.news-badge{display:inline-block;background:#f0f4ff;color:#3355aa;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-right:4px;text-transform:uppercase;letter-spacing:0.05em}
+#add-panel label{font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:3px;margin-top:11px;text-transform:uppercase;letter-spacing:0.06em;font-family:'DM Mono',monospace}
+#add-panel label:first-of-type{margin-top:0}
+#add-panel input,#add-panel select,#add-panel textarea{width:100%;padding:7px 9px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--ink);font-family:'DM Sans',sans-serif}
+#add-panel input:focus,#add-panel select:focus,#add-panel textarea:focus{outline:none;border-color:var(--navy-mid);box-shadow:0 0 0 2px rgba(24,95,165,0.1)}
+#add-panel textarea{height:100px;resize:vertical}
+#ai-btn{margin-top:10px;width:100%;padding:8px;font-size:12px;font-weight:600;background:var(--navy);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background 0.1s}
+#ai-btn:hover{background:var(--navy-mid)}
+#ai-btn:disabled{opacity:0.45;cursor:not-allowed}
+#ai-status{font-size:11px;color:var(--navy-mid);margin-top:6px;min-height:14px;text-align:center}
+.divider{height:1px;background:var(--border);margin:12px 0}
+#add-btn{width:100%;padding:8px;font-size:12px;font-weight:600;background:var(--gold);color:var(--navy);border:none;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.1s}
+#add-btn:hover{background:#b8943d}
+#add-msg{font-size:11px;margin-top:6px;text-align:center;min-height:14px}
+
+/* legend */
+#legend{display:flex;gap:8px;flex-wrap:wrap;padding:6px 13px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface)}
+.leg{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
+.leg-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid white;box-shadow:0 0 0 1px rgba(0,0,0,0.18)}
+
+/* popup */
+.leaflet-popup-content-wrapper{border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,0.15);font-family:'DM Sans',sans-serif}
+.leaflet-popup-content{margin:11px 13px;min-width:200px}
+.p-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;padding:2px 7px;border-radius:8px;display:inline-block;margin-bottom:4px;font-family:'DM Mono',monospace}
+.p-title{font-weight:600;font-size:12px;line-height:1.4;margin-bottom:3px;color:var(--ink)}
+.p-meta{font-size:11px;color:var(--muted);margin-bottom:4px;font-family:'DM Mono',monospace}
+.p-notes{font-size:11px;color:#333;margin-bottom:5px;line-height:1.5;border-left:2px solid var(--gold);padding-left:6px;font-style:italic}
+.p-link{font-size:11px;font-weight:600;color:var(--navy-mid);text-decoration:none}
+.p-link:hover{text-decoration:underline}
+.p-source{font-size:10px;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div id="logo">South Atlantic Sites <span>&#9679;</span> TBJ Deal Map</div>
+    <button class="fbtn active" data-tag="all">All</button>
+    <button class="fbtn" data-tag="industrial">Industrial</button>
+    <button class="fbtn" data-tag="development">Development</button>
+    <button class="fbtn" data-tag="office">Office</button>
+    <button class="fbtn" data-tag="land">Land</button>
+    <button class="fbtn" data-tag="retail">Retail</button>
+    <select id="date-filter">
+      <option value="all">All dates</option>
+      <option value="7">This week</option>
+      <option value="30">Last 30 days</option>
+      <option value="90">Last 90 days</option>
+    </select>
+    <button id="refresh-btn" onclick="refreshFeed()">⟳ Refresh Feed</button>
+    <span id="story-count">— stories</span>
+  </div>
+
+  <div id="main">
+    <div id="map"></div>
+    <div id="sidebar">
+      <div id="sidebar-tabs">
+        <button class="stab active" data-tab="stories">Feed</button>
+        <button class="stab" data-tab="news">📰 News</button>
+        <button class="stab" data-tab="add">+ Pin Story</button>
+      </div>
+
+      <div id="story-panel">
+        <div id="empty-msg" style="display:none">No stories match your current filters.<br><br>Use <strong>+ Pin Story</strong> to add new deals, or adjust the filters above.</div>
+      </div>
+
+      <div id="news-panel">
+        <div id="news-empty-msg">No news stories yet.<br><br>Hit <strong>⟳ Refresh Feed</strong> to check for TBJ stories that can't be mapped to a specific location.</div>
+      </div>
+
+      <div id="add-panel">
+        <label>Paste TBJ Article Text *</label>
+        <textarea id="in-text" placeholder="Copy the full article text from TBJ and paste it here. Claude will extract the headline, location, deal type, and key facts automatically.&#10;&#10;Then click Extract below."></textarea>
+        <button id="ai-btn" onclick="runExtract()">⚡ Extract &amp; Auto-Fill</button>
+        <div id="ai-status"></div>
+
+        <div class="divider"></div>
+
+        <label>Headline</label>
+        <input id="in-title" type="text" placeholder="Auto-filled from article"/>
+        <label>TBJ Article URL</label>
+        <input id="in-url" type="text" placeholder="Auto-filled — or paste manually"/>
+        <label>Location</label>
+        <select id="in-loc"></select>
+        <label>Category</label>
+        <select id="in-tag">
+          <option value="industrial">Industrial</option>
+          <option value="development">Development</option>
+          <option value="office">Office</option>
+          <option value="land">Land</option>
+          <option value="retail">Retail</option>
+        </select>
+        <label>Deal Notes</label>
+        <input id="in-notes" type="text" placeholder="Auto-filled — SF, price, tenants..."/>
+        <br/><br/>
+        <button id="add-btn" onclick="addStory()">Pin to Map</button>
+        <div id="add-msg"></div>
+      </div>
+
+      <div id="legend">
+        <div class="leg"><div class="leg-dot" style="background:#8B4513"></div>Industrial</div>
+        <div class="leg"><div class="leg-dot" style="background:#2E7D32"></div>Development</div>
+        <div class="leg"><div class="leg-dot" style="background:#1565C0"></div>Office</div>
+        <div class="leg"><div class="leg-dot" style="background:#6A1B9A"></div>Land</div>
+        <div class="leg"><div class="leg-dot" style="background:#AD1457"></div>Retail</div>
+        <div class="leg"><div class="leg-dot" style="background:#C9A84C"></div>Pinned</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Config ────────────────────────────────────────────────────
+const LS_KEY = 'sas_tbj_map_v2';
+const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
+
+// Multiple Nitter instances as fallbacks (public Twitter mirrors)
+const NITTER_INSTANCES = [
+  'https://nitter.privacydev.net',
+  'https://nitter.poast.org',
+  'https://nitter.1d4.us',
+];
+const TBJ_HANDLE = 'TriangleBIZJrnl';
+const CORS_PROXY = 'https://api.allorigins.win/get?url=';
+
+const COLORS = {
+  industrial:'#8B4513', development:'#2E7D32', office:'#1565C0',
+  retail:'#AD1457', land:'#6A1B9A', manual:'#C9A84C'
+};
+const TAG_CSS = {
+  industrial:'background:var(--ti-bg);color:var(--ti-fg)',
+  development:'background:var(--td-bg);color:var(--td-fg)',
+  office:'background:var(--to-bg);color:var(--to-fg)',
+  retail:'background:var(--tr-bg);color:var(--tr-fg)',
+  land:'background:var(--tl-bg);color:var(--tl-fg)',
+  manual:'background:var(--tm-bg);color:var(--tm-fg)',
+};
+
+const PLACES = [
+  {name:'Raleigh',lat:35.7796,lng:-78.6382},{name:'Durham',lat:35.9940,lng:-78.8986},
+  {name:'Chapel Hill',lat:35.9132,lng:-79.0558},{name:'Cary',lat:35.7915,lng:-78.7811},
+  {name:'Apex',lat:35.7326,lng:-78.8503},{name:'Morrisville',lat:35.8237,lng:-78.8253},
+  {name:'Wake Forest',lat:35.9799,lng:-78.5097},{name:'Garner',lat:35.7079,lng:-78.6137},
+  {name:'Fuquay-Varina',lat:35.5843,lng:-78.8003},{name:'Holly Springs',lat:35.6512,lng:-78.8340},
+  {name:'Pittsboro',lat:35.7243,lng:-79.1770},{name:'Sanford',lat:35.4799,lng:-79.1803},
+  {name:'RTP',lat:35.8998,lng:-78.8669},{name:'Hillsborough',lat:36.0748,lng:-79.0995},
+  {name:'Clayton',lat:35.6504,lng:-78.4567},{name:'Knightdale',lat:35.7876,lng:-78.4894},
+  {name:'Wendell',lat:35.7873,lng:-78.3694},{name:'Youngsville',lat:36.0254,lng:-78.4811},
+  {name:'Chatham County',lat:35.7048,lng:-79.2441},{name:'Benson',lat:35.3732,lng:-78.5459},
+  {name:'Johnston County',lat:35.5951,lng:-78.3674},{name:'Zebulon',lat:35.8226,lng:-78.3119},
+  {name:'North Hills',lat:35.8363,lng:-78.6468},{name:'Glenwood Ave',lat:35.8121,lng:-78.6618},
+  {name:'Downtown Raleigh',lat:35.7796,lng:-78.6382},{name:'Downtown Durham',lat:35.9963,lng:-78.9018},
+  {name:'Eastern Wake',lat:35.7612,lng:-78.3950},{name:'North Raleigh',lat:35.8700,lng:-78.6200},
+  {name:'RDU',lat:35.8801,lng:-78.7880},{name:'Wake County',lat:35.7923,lng:-78.6444},
+  {name:'Research Triangle',lat:35.8998,lng:-78.8669},{name:'Person County',lat:36.3918,lng:-78.9701},
+  {name:'New Hill',lat:35.6574,lng:-78.9735},{name:'South Durham',lat:35.9200,lng:-78.9500},
+];
+
+const SEED = [
+  {title:"Vulcan Elements signs 501,215 SF lease at Cross Point Logistics Center — largest U.S. manufacturing lease of 2025",loc:'Benson',notes:"501,215 SF · Cross Point Logistics Center · Largest U.S. industrial lease of 2025",tag:'industrial',date:'2025-11-01',link:'https://www.bizjournals.com/triangle/news/commercial-real-estate',source:'seed'},
+  {title:"Fujifilm expands with $1.2B industrial facility in Holly Springs",loc:'Holly Springs',notes:"$1.2B · Life science manufacturing expansion",tag:'industrial',date:'2025-09-15',link:'https://www.bizjournals.com/triangle/news/commercial-real-estate',source:'seed'},
+  {title:"Amgen commits $1.02B to new manufacturing facility in Holly Springs",loc:'Holly Springs',notes:"$1.02B · New life science manufacturing campus",tag:'industrial',date:'2025-08-20',link:'https://www.bizjournals.com/triangle/news/commercial-real-estate',source:'seed'},
+  {title:"Kuehne + Nagel pre-leases major distribution facility in RTP / I-40 corridor",loc:'RTP',notes:"Pre-leased distribution · Part of 778,000 SF delivered in RTP/I-40 and Eastern Wake",tag:'industrial',date:'2025-10-01',link:'https://www.bizjournals.com/triangle/news/commercial-real-estate',source:'seed'},
+  {title:"Johnson Brothers pre-leases second major facility in Eastern Wake — 778k SF total delivered with Kuehne+Nagel",loc:'Eastern Wake',notes:"Pre-leased warehouse · Eastern Wake submarket surge",tag:'industrial',date:'2025-10-15',link:'https://www.bizjournals.com/triangle/news/commercial-real-estate',source:'seed'},
+  {title:"Johnston County industrial: New Class A product delivers on I-40 / Hwy 42 corridor",loc:'Johnston County',notes:"New warehouse deliveries · Sub-5% vacancy · Southern Wake/Johnston demand corridor",tag:'industrial',date:'2026-01-05',link:'https://www.bizjournals.com/triangle/news/commercial-real-estate',source:'seed'},
+  {title:"Corning vacates Eastern NC distribution center — Ryder System takes over occupancy",loc:'Eastern Wake',notes:"Tenant turnover · Corning out, Ryder in · Eastern NC distribution center",tag:'industrial',date:'2026-03-02',link:'https://www.bisnow.com/raleigh-durham',source:'seed'},
+  {title:"37-story residential tower — tallest in Raleigh — rising on Glenwood Avenue",loc:'Glenwood Ave',notes:"37-story tower · Tallest residential building in Raleigh history",tag:'development',date:'2026-02-10',link:'https://www.bizjournals.com/triangle/news/commercial-real-estate',source:'seed'},
+  {title:"Beacon Partners acquires 119 acres in Durham for large-scale mixed-use development",loc:'Durham',notes:"119 acres · Mixed-use development · Beacon Partners",tag:'development',date:'2026-02-17',link:'https://www.bisnow.com/raleigh-durham',source:'seed'},
+  {title:"Microsoft announces mega data center campus in Person County near Virginia border",loc:'Person County',notes:"Mega campus · Person County · Near Virginia border · Major hyperscaler investment in NC",tag:'development',date:'2026-02-25',link:'https://www.bisnow.com/raleigh-durham/news/data-center',source:'seed'},
+  {title:"New Hill Digital Campus data center scrapped — Natelli Investments withdraws 189-acre Apex annexation and rezoning",loc:'New Hill',notes:"189 acres · New Hill community · 250 MW campus near Shearon Harris Nuclear Plant · Withdrawn by Natelli Investments",tag:'development',date:'2026-03-10',link:'https://www.bisnow.com/raleigh-durham/news/data-center/massive-raleigh-area-data-center-scrapped-133584',source:'seed'},
+  {title:"Apex enacts data center development moratorium ahead of March 10 town meeting",loc:'Apex',notes:"Data center moratorium · Apex town council · Proactive zoning regulation response",tag:'development',date:'2026-03-07',link:'https://abc11.com/post/data-center-developer-pulls-back-apex-now/18685708/',source:'seed'},
+  {title:"Upscale hotel competition heating up in Cary / Umstead corridor",loc:'Cary',notes:"New luxury hotel development · Cary/Umstead market",tag:'development',date:'2026-01-10',link:'https://www.bizjournals.com/triangle/news/commercial-real-estate',source:'seed'},
+  {title:"Kane Realty outlines major 2026 pipeline — North Hills and Downtown Raleigh focus",loc:'North Hills',notes:"Kane Realty · Mixed-use pipeline · North Hills and Downtown Raleigh",tag:'development',date:'2026-02-02',link:'https://www.axios.com/local/raleigh/development',source:'seed'},
+  {title:"Regional law firm takes full floor at Imperial Center (formerly IQVIA building) in RTP",loc:'RTP',notes:"Full floor office lease · Imperial Tower under renovation · RTP submarket",tag:'office',date:'2026-02-15',link:'https://www.bizjournals.com/triangle/news/commercial-real-estate',source:'seed'},
+  {title:"Aspida signs 90,000 SF lease at Imperial Tower in RTP",loc:'RTP',notes:"90,000 SF · Aspida · Imperial Tower (formerly IQVIA) · Long-term commitment",tag:'office',date:'2025-11-01',link:'https://www.triprop.com/2025-triangle-market-overview-and-2026-forecast-office/',source:'seed'},
+  {title:"Victra leases 43,000 SF at Imperial Tower RTP",loc:'RTP',notes:"43,000 SF · Victra · Imperial Tower · Repositioning success story",tag:'office',date:'2025-10-15',link:'https://www.triprop.com/2025-triangle-market-overview-and-2026-forecast-office/',source:'seed'},
+  {title:"North Hills and Raleigh Iron Works lead Triangle office absorption — spec suite strategy driving lease-ups",loc:'North Hills',notes:"Class A office · Spec suites strategy · North Hills and Raleigh Iron Works outperforming",tag:'office',date:'2025-12-01',link:'https://www.triprop.com/2025-triangle-market-overview-and-2026-forecast-office/',source:'seed'},
+  {title:"One North Hills Tower closes out — North Hills submarket achieves full lease-up",loc:'North Hills',notes:"One North Hills Tower · Full lease-up · Walkability and amenities driving demand",tag:'office',date:'2025-09-01',link:'https://www.triprop.com/2025-triangle-market-overview-and-2026-forecast-office/',source:'seed'},
+  {title:"Town Lane's ShopOne platform acquires two shopping centers in Raleigh-Durham region",loc:'Raleigh',notes:"ShopOne · Two retail center acquisitions · Raleigh-Durham region",tag:'retail',date:'2026-02-23',link:'https://www.bisnow.com/raleigh-durham',source:'seed'},
+  {title:"Bob's Discount Furniture signs two leases totaling 76,854 SF in Triangle market",loc:'Cary',notes:"76,854 SF total · Bob's Discount Furniture · Two locations in Triangle",tag:'retail',date:'2025-10-01',link:'https://www.crexi.com/blog/raleigh-commercial-real-estate-market',source:'seed'},
+  {title:"US-1 South corridor toward Sanford emerging as new flex/industrial land play for developers",loc:'Sanford',notes:"US-1 South corridor · Sanford submarket · New flex industrial development opportunities",tag:'land',date:'2026-01-20',link:'https://www.triprop.com/2025-triangle-market-overview-and-2026-forecast-land/',source:'seed'},
+  {title:"Infill assemblage and redevelopment opportunities surfacing as greenfield deals stall",loc:'Durham',notes:"Infill assemblage · Redevelopment plays · Triangle market reset creating land opportunity",tag:'land',date:'2026-02-01',link:'https://www.triprop.com/2025-triangle-market-overview-and-2026-forecast-land/',source:'seed'},
+  {title:"Avison Young brokers sale of five-building office park in Raleigh for $16M",loc:'Raleigh',notes:"$16M · Five-building office park · Avison Young · Raleigh",tag:'office',date:'2025-11-01',link:'https://www.avisonyoung.us/web/raleigh-durham',source:'seed'},
+  {title:"CBRE brokers sale of EmergeOrtho Southpoint medical outpatient building — 35,171 SF in Durham",loc:'Durham',notes:"35,171 SF · EmergeOrtho Southpoint · Medical MOB/ASC · 7810 NC Hwy 751 · Sold to BGO",tag:'office',date:'2025-10-01',link:'https://www.cbre.com/offices/corporate/raleigh',source:'seed'},
+  {title:"Glenwood South restaurant launches new offerings — new F&B tenant activates corridor",loc:'Glenwood Ave',notes:"Glenwood South · New restaurant tenant · F&B retail activation along Glenwood Ave",tag:'retail',date:'2026-03-13',link:'https://www.bizjournals.com/triangle/news/2026/03/13/raleigh-restaurant-roundup-vidrio-brunch-menu.html',source:'seed'},
+  {title:"Cary building with big-name tenant sold for $58M — Vigilant Holdings acquires Press Building",loc:'Cary',notes:"$58M · Press Building · Big-name anchor tenant · Vigilant Holdings acquires",tag:'office',date:'2026-03-13',link:'https://www.bizjournals.com/triangle/news/2026/03/13/cary-press-building-sold-vigilant-holdings.html',source:'seed'},
+  {title:"North Hills tower to have 20th-floor rooftop pool, 357 apartments — Kane Realty development",loc:'North Hills',notes:"357 apartments · 20th-floor rooftop pool · Kane Realty · North Hills mixed-use tower",tag:'development',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/raleigh-north-hills-tower-kane-realty-development.html',source:'seed'},
+  {title:"Former Amazon hub in Durham sold for $26M despite no tenants — Atlanta Property Group acquires vacant industrial site",loc:'Durham',notes:"$26M · Vacant · Former Amazon · Atlanta Property Group · Speculative industrial acquisition",tag:'industrial',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/atlanta-property-group-buys-durham-industrial-site.html',source:'seed'},
+  {title:"Eastcut Sandwich Bar signs lease at Waverly Place — third Triangle location heads to Cary",loc:'Cary',notes:"Eastcut Sandwich Bar · Third location · Waverly Place retail center · Cary",tag:'retail',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/eastcut-sandwich-bar-cary-waverly-place-lease.html',source:'seed'},
+  {title:"Beta Technologies hiring in Morrisville for next-gen electric aircraft program",loc:'Morrisville',notes:"Beta Technologies · Electric aircraft · Hiring campaign · Morrisville / RDU corridor",tag:'industrial',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/beta-technologies-hiring-morrisville-aircraft.html',source:'seed'},
+  {title:"RDU Airport weighs raising parking rates as capital project budget grows",loc:'RDU',notes:"RDU · Parking rate increase · Capital projects budget · Airport authority study",tag:'development',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/rdu-airport-parking-rates-budget-capital-projects.html',source:'seed'},
+  {title:"$50M industrial park project could boost Rocky Mount's economic prospects",loc:'Johnston County',notes:"$50M · Ruddell Group · Rocky Mount industrial park · Eastern NC economic development",tag:'industrial',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/ruddell-group-rocky-mount-industrial-park-building.html',source:'seed'},
+  {title:"NC State research aims for $1B enterprise — new leader targets defense partnerships and DOD funding",loc:'Raleigh',notes:"NC State · $1B research enterprise · Defense partnerships · DOD funding",tag:'development',date:'2026-03-12',link:'https://www.bizjournals.com/triangle/news/2026/03/12/ncstate-research-funding-defense-partnerships-dod.html',source:'seed'}
+];
+
+const SEED_NEWS = [
+  {title:"Duke Energy struggling to keep up with power demand surge tied to industrial and data center growth",loc:'Johnston County',notes:"Power demand surge · Duke Energy capacity constraints in Johnston County",tag:'industrial',date:'2026-02-20',link:'https://www.bizjournals.com/triangle/news/commercial-real-estate',source:'seed'},
+  {title:"Triangle small-bay flex vacancy holds near 5% — tightest segment in entire industrial market",loc:'Raleigh',notes:"Small-bay industrial vacancy ~5% · East Wake and SW Wake leading · Triangle 55 and Knightdale Gateway key assets",tag:'industrial',date:'2025-12-15',link:'https://www.triprop.com/2025-triangle-market-overview-and-2025-forecast-flex-2/',source:'seed'},
+  {title:"Southeast Wake County industrial vacancy hits 3% — Merritt Properties, Wigeon Capital, and Greenberg Gibbons leading new flex construction",loc:'Eastern Wake',notes:"3% vacancy · Southeast Wake · New flex construction underway",tag:'industrial',date:'2025-11-15',link:'https://www.triprop.com/2025-triangle-market-overview-and-2025-forecast-flex-2/',source:'seed'},
+  {title:"Southern Wake I-540 interchange emerging as top industrial submarket for 2026 absorption",loc:'Fuquay-Varina',notes:"I-540 corridor · Southern Wake County · Key 2026 industrial growth node",tag:'industrial',date:'2026-01-20',link:'https://www.triprop.com/2025-triangle-market-overview-and-2026-forecast-warehouse/',source:'seed'},
+  {title:"Triangle industrial construction pipeline hits record 4.3M SF — largest in regional history entering 2026",loc:'Raleigh',notes:"4.3M SF pipeline · 1.5M SF delivering year-end 2025 · Largest industrial pipeline in Triangle history",tag:'development',date:'2025-12-01',link:'https://www.triprop.com/2025-triangle-market-overview-and-2026-forecast-warehouse/',source:'seed'},
+  {title:"Land deals returning to market across Triangle — pre-2022 contract closings hit concession pressure",loc:'Raleigh',notes:"2025-2026 land market reset · Pre-2022 deals closing with concessions · Sites sitting longer with fewer offers",tag:'land',date:'2026-01-15',link:'https://www.triprop.com/2025-triangle-market-overview-and-2026-forecast-land/',source:'seed'},
+  {title:"Triangle industrial investment sales clearing above $200/SF — several Class A trades set regional records",loc:'Raleigh',notes:"Class A industrial · $200+/SF · Record pricing in Southern Wake, Eastern Wake, Johnston County",tag:'industrial',date:'2025-12-15',link:'https://www.triprop.com/2025-triangle-market-overview-and-2026-forecast-investment-sales/',source:'seed'},
+  {title:"Dundon remains 'bullish' on bringing MLB to Raleigh — committed despite NHL/NBA moves",notes:"Tom Dundon · MLB expansion · Canes CEO sees variety of land options for stadium site in Raleigh",tag:'development',date:'2026-03-13',link:'https://www.bizjournals.com/triangle/news/2026/03/11/mlb-raleigh-baseball-dundon-portland-trail-blazers.html'}
+];
+
+// ── State ──────────────────────────────────────────────────────
+let map, allStories=[], activeMarkers=[], activeFilter='all', activeDays='all';
+
+// ── Utils ──────────────────────────────────────────────────────
+function jitter(v){return v+(Math.random()-0.5)*0.014;}
+function fmtDate(ds){try{return new Date(ds).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}catch(e){return ds||'';}}
+function dateMs(ds){try{if(!ds)return 0;const p=ds.split('-').map(Number);return new Date(p[0],p[1]-1,p[2],12,0,0).getTime();}catch(e){return 0;}}
+function findPlace(loc){
+  if(!loc)return null;
+  return PLACES.find(p=>p.name.toLowerCase()===loc.toLowerCase())||
+         PLACES.find(p=>loc.toLowerCase().includes(p.name.toLowerCase()))||
+         PLACES.find(p=>p.name.toLowerCase().includes(loc.toLowerCase()));
+}
+function makeIcon(tag,isManual){
+  const c=isManual?COLORS.manual:(COLORS[tag]||'#555');
+  const s=isManual?14:11;
+  return L.divIcon({className:'',
+    html:`<div style="width:${s}px;height:${s}px;border-radius:50%;background:${c};border:2.5px solid white;box-shadow:0 1px 6px rgba(0,0,0,0.4)"></div>`,
+    iconSize:[s,s],iconAnchor:[s/2,s/2],popupAnchor:[0,-10]});
+}
+
+// ── localStorage ───────────────────────────────────────────────
+function loadPins(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'[]');}catch(e){return[];}}
+function savePins(pins){try{localStorage.setItem(LS_KEY,JSON.stringify(pins));}catch(e){}}
+
+// ── Twitter/X via Nitter ───────────────────────────────────────
+const CRE_KW = ['real estate','lease','leasing','industrial','warehouse','logistics','development',
+  'construction','rezoning','permit','office','retail','land','acres','sqft','square feet',
+  'multifamily','apartment','manufacturing','data center','flex space','groundbreaking',
+  'mixed-use','building','commercial','cre'];
+
+function isCRE(text){
+  const t=(text||'').toLowerCase();
+  return CRE_KW.some(k=>t.includes(k));
+}
+function detectTag(text){
+  const t=text.toLowerCase();
+  if(/industrial|logistics|distribution|manufacturing|warehouse|fulfillment|data.center/.test(t))return'industrial';
+  if(/development|developer|construction|rezoning|permit|groundbreaking|mixed.use/.test(t))return'development';
+  if(/retail|restaurant|brewery|hotel|hospitality/.test(t))return'retail';
+  if(/\bland\b|acres|parcel|site|zoning/.test(t))return'land';
+  return'office';
+}
+function detectLoc(text){
+  for(const p of PLACES){
+    const re=new RegExp('\\b'+p.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i');
+    if(re.test(text))return p.name;
+  }
+  return null;
+}
+function extractTBJLink(text){
+  // Nitter expands t.co links — look for bizjournals URL
+  const m=text.match(/https?:\/\/(?:www\.)?bizjournals\.com\/triangle\/[^\s"<>]+/);
+  if(m)return m[0];
+  // fallback: any t.co or bit.ly link
+  const m2=text.match(/https?:\/\/(?:t\.co|bit\.ly)\/[^\s"<>]+/);
+  return m2?m2[0]:'https://www.bizjournals.com/triangle/news/commercial-real-estate';
+}
+
+async function fetchNitterFeed(instance){
+  const url=`${instance}/${TBJ_HANDLE}/rss`;
+  const proxyUrl=CORS_PROXY+encodeURIComponent(url);
+  const resp=await fetch(proxyUrl,{signal:AbortSignal.timeout(8000)});
+  const data=await resp.json();
+  const xml=new DOMParser().parseFromString(data.contents||'','text/xml');
+  const items=xml.querySelectorAll('item');
+  if(!items.length)throw new Error('No items');
+  return Array.from(items).map(item=>{
+    const title=(item.querySelector('title')?.textContent||'').trim();
+    const desc=(item.querySelector('description')?.textContent||'').replace(/<[^>]+>/g,'').trim();
+    const pubDate=(item.querySelector('pubDate')?.textContent||'').trim();
+    const fullText=title+' '+desc;
+    let dateIso='';
+    try{dateIso=new Date(pubDate).toISOString();}catch(e){}
+    return{title,desc,fullText,dateIso,link:extractTBJLink(fullText)};
+  });
+}
+
+async function refreshFeed(){
+  const btn=document.getElementById('refresh-btn');
+  const countEl=document.getElementById('story-count');
+  btn.disabled=true;
+  btn.textContent='Checking Gmail...';
+
+  try {
+    // Search for forwarded TBJ emails — handles both direct and forwarded formats
+    const searchResp = await fetch('https://gmail.mcp.claude.com/mcp', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        method: 'tools/call',
+        params: {
+          name: 'gmail_search_messages',
+          arguments: {
+            q: '(from:mike@southatlanticsites.com subject:Fwd) OR (from:reply@news.bizjournals.com) newer_than:60d',
+            maxResults: 30
+          }
+        }
+      })
+    });
+
+    if(!searchResp.ok) throw new Error('Gmail MCP unreachable');
+    const searchData = await searchResp.json();
+    const messages = searchData?.result?.messages || [];
+
+    if(!messages.length){
+      btn.disabled=false;
+      btn.textContent='⟳ Refresh Feed';
+      return;
+    }
+
+    const existing = new Set(allStories.map(s=>s.title.toLowerCase().substring(0,60)));
+    let added = 0;
+
+    for(const msg of messages.slice(0,20)){
+      try{
+        const msgResp = await fetch('https://gmail.mcp.claude.com/mcp', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            method: 'tools/call',
+            params: {
+              name: 'gmail_read_message',
+              arguments: { messageId: msg.id }
+            }
+          })
+        });
+        const msgData = await msgResp.json();
+        const email = msgData?.result;
+        if(!email) continue;
+
+        // Extract body and date
+        const body = email.body || '';
+        const dateIso = email.headers?.Date ? new Date(email.headers.Date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+
+        // Decode a base64-encoded TBJ redirect URL to get the real article URL
+        function decodeTBJUrl(b64) {
+          try {
+            const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+            const decoded = atob(padded);
+            return decoded.split('?')[0]; // strip UTM params
+          } catch(e) { return null; }
+        }
+
+        // Parse digest: extract (headline, url) pairs from the email body
+        // TBJ format: headline text on one line, then <url> on next line(s)
+        const digestStories = [];
+        const lines = body.split('\n').map(l => l.trim()).filter(Boolean);
+
+        for(let i = 0; i < lines.length - 1; i++) {
+          const line = lines[i];
+          const nextLine = lines[i+1] || '';
+
+          // Look for a TBJ click redirect URL
+          const urlMatch = nextLine.match(/https?:\/\/link\.bizjournals\.com\/click\/[^/]+\/([A-Za-z0-9+/=_-]+)\//);
+          if(!urlMatch) continue;
+
+          const realUrl = decodeTBJUrl(urlMatch[1]);
+          if(!realUrl || !realUrl.includes('bizjournals.com/triangle/news/')) continue;
+
+          // The line before the URL is the headline — skip navigation/boilerplate
+          const skipPhrases = ['Read full story', 'View in Browser', 'Quick Links', 'Unsubscribe', 'Manage Preferences', 'UPCOMING EVENTS', 'Read more', 'START YOUR FREE TRIAL'];
+          if(skipPhrases.some(s => line.includes(s))) continue;
+          if(line.length < 10 || line.startsWith('<') || line.startsWith('http')) continue;
+
+          digestStories.push({ title: line, link: realUrl });
+        }
+
+        // If no digest stories found, fall back to subject line + first bizjournals URL
+        if(!digestStories.length) {
+          const rawSubject = email.headers?.Subject || '';
+          const subject = rawSubject.replace(/^(Fwd?:\s*)+/i,'').trim();
+          if(subject) {
+            const directUrl = body.match(/https?:\/\/(?:www\.)?bizjournals\.com\/triangle\/news\/[^\s"<>)]+/);
+            digestStories.push({ title: subject, link: directUrl ? directUrl[0] : 'https://www.bizjournals.com/triangle/news/commercial-real-estate' });
+          }
+        }
+
+        // Process each story from the digest
+        for(const ds of digestStories) {
+          const titleKey = ds.title.toLowerCase().substring(0,60);
+          if(existing.has(titleKey)) continue;
+          existing.add(titleKey);
+
+          const fullText = ds.title;
+          const detectedLoc = detectLoc(fullText);
+
+          if(detectedLoc) {
+            allStories.unshift({
+              title: ds.title.substring(0,160),
+              link: ds.link,
+              notes: '',
+              tag: detectTag(fullText),
+              loc: detectedLoc,
+              date: dateIso,
+              source: 'gmail',
+              manual: false,
+            });
+            added++;
+          } else {
+            addNewsStory({
+              title: ds.title.substring(0,160),
+              link: ds.link,
+              notes: '',
+              tag: detectTag(fullText),
+              date: dateIso,
+            });
+          }
+        }
+      }catch(e){ console.warn('Failed to read message', msg.id, e.message); }
+    }
+
+    btn.disabled=false;
+    btn.textContent='⟳ Refresh Feed';
+    renderAll();
+    renderNews();
+    updateNewsTabCount();
+    countEl.textContent=getFiltered().length+' stories';
+    if(added>0){
+      const em=document.getElementById('empty-msg');
+      if(em) em.remove();
+    }
+
+  } catch(e) {
+    console.error('Gmail feed error:', e);
+    btn.disabled=false;
+    btn.textContent='⟳ Refresh Feed';
+  }
+}
+
+// ── AI Extraction ──────────────────────────────────────────────
+async function runExtract(){
+  const text=document.getElementById('in-text').value.trim();
+  const btn=document.getElementById('ai-btn');
+  const status=document.getElementById('ai-status');
+  if(!text){status.textContent='Paste article text first.';status.style.color='var(--red)';return;}
+
+  btn.disabled=true;btn.textContent='Extracting...';
+  status.textContent='Calling Claude...';status.style.color='var(--navy-mid)';
+
+  const locList=PLACES.map(p=>p.name).join(', ');
+  const prompt=`Extract CRE deal info from this Triangle Business Journal article. Return ONLY valid JSON, no markdown.
+
+{
+  "title": "concise deal headline, max 120 chars",
+  "url": "the bizjournals.com article URL if present in text, else empty string",
+  "location": "best match from: ${locList}",
+  "tag": "one of: industrial, development, office, land, retail",
+  "notes": "key facts: SF or acres, price or $/SF, tenant/buyer/seller, address if mentioned — 1-2 sentences",
+  "date": "YYYY-MM-DD if found, else today ${new Date().toISOString().slice(0,10)}"
+}
+
+Article:
+${text.substring(0,4000)}`;
+
+  try{
+    const resp=await fetch(ANTHROPIC_API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,
+        messages:[{role:'user',content:prompt}]})
+    });
+    const data=await resp.json();
+    const raw=(data.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
+    const p=JSON.parse(raw);
+    if(p.title)document.getElementById('in-title').value=p.title;
+    if(p.url)document.getElementById('in-url').value=p.url;
+    if(p.notes)document.getElementById('in-notes').value=p.notes;
+    if(p.date)document.getElementById('ai-btn').dataset.date=p.date;
+    if(p.location){
+      const sel=document.getElementById('in-loc');
+      const opt=Array.from(sel.options).find(o=>o.value===p.location);
+      if(opt)sel.value=p.location;
+    }
+    if(p.tag){
+      const sel=document.getElementById('in-tag');
+      const opt=Array.from(sel.options).find(o=>o.value===p.tag);
+      if(opt)sel.value=p.tag;
+    }
+    status.textContent='Done — review then hit Pin to Map.';status.style.color='var(--green)';
+    btn.textContent='⚡ Extract & Auto-Fill';btn.disabled=false;
+  }catch(e){
+    status.textContent='Extract failed: '+e.message;status.style.color='var(--red)';
+    btn.textContent='⚡ Extract & Auto-Fill';btn.disabled=false;
+  }
+}
+
+// ── Add story ──────────────────────────────────────────────────
+function addStory(){
+  const title=document.getElementById('in-title').value.trim();
+  const url=document.getElementById('in-url').value.trim();
+  const loc=document.getElementById('in-loc').value;
+  const tag=document.getElementById('in-tag').value;
+  const notes=document.getElementById('in-notes').value.trim();
+  const date=document.getElementById('ai-btn').dataset.date||new Date().toISOString().slice(0,10);
+  const msg=document.getElementById('add-msg');
+  if(!title){msg.textContent='Headline required.';msg.style.color='var(--red)';return;}
+
+  const story={title,link:url||'https://www.bizjournals.com/triangle/news/commercial-real-estate',
+    notes,tag,loc,date,source:'manual',manual:true,_id:Date.now()};
+  allStories.unshift(story);
+  const pins=loadPins();pins.unshift(story);savePins(pins);
+
+  msg.textContent='Pinned!';msg.style.color='var(--green)';
+  ['in-title','in-url','in-notes','in-text'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ai-status').textContent='';
+  delete document.getElementById('ai-btn').dataset.date;
+  setTimeout(()=>{msg.textContent='';},2500);
+  document.querySelector('.stab[data-tab="stories"]').click();
+  renderAll();
+}
+
+// ── Render ─────────────────────────────────────────────────────
+function getFiltered(){
+  let s=allStories;
+  if(activeFilter!=='all')s=s.filter(x=>x.tag===activeFilter);
+  if(activeDays!=='all'){
+    const cut=Date.now()-parseInt(activeDays)*86400000;
+    s=s.filter(x=>x.manual||dateMs(x.date)>cut);
+  }
+  return s;
+}
+
+function renderAll(){
+  activeMarkers.forEach(m=>map.removeLayer(m));
+  activeMarkers=[];
+  const panel=document.getElementById('story-panel');
+  // keep empty-msg if present, clear cards
+  const cards=panel.querySelectorAll('.story-card');
+  cards.forEach(c=>c.remove());
+
+  const filtered=getFiltered();
+  document.getElementById('story-count').textContent=filtered.length+' stories';
+  document.querySelector('.stab[data-tab="stories"]').textContent='Feed ('+filtered.length+')';
+
+  // Show/hide static empty-msg
+  const emptyMsg = document.getElementById('empty-msg');
+  if(emptyMsg) emptyMsg.style.display = filtered.length===0 ? 'block' : 'none';
+
+  filtered.forEach(story=>{
+    const tagKey=story.manual?'manual':story.tag;
+    const tagStyle=TAG_CSS[tagKey]||TAG_CSS.office;
+    const place=findPlace(story.loc);
+    const sourceLabel=story.source==='gmail'?'via TBJ Newsletter':story.source==='twitter'?'via @TriangleBIZJrnl':story.source==='manual'?'manually pinned':'seed data';
+
+    const card=document.createElement('div');
+    card.className='story-card';
+    card.innerHTML=
+      `<span class="stag" style="${tagStyle}">${story.manual?'pinned':story.tag}</span>`+
+      `<div class="stitle">${story.title}</div>`+
+      `<div class="smeta">${story.loc||'Triangle'} &middot; ${fmtDate(story.date)}</div>`+
+      (story.notes?`<div class="snotes">${story.notes}</div>`:'')+
+      (story.link?`<a class="slink" href="${story.link}" target="_blank">Read on TBJ &rarr;</a>`:'')+
+      `<div class="ssource">${sourceLabel}</div>`;
+
+    if(place){
+      if(!story._lat){story._lat=jitter(place.lat);story._lng=jitter(place.lng);}
+      const m=L.marker([story._lat,story._lng],{icon:makeIcon(story.tag,story.manual)}).addTo(map);
+      m.bindPopup(
+        `<span class="p-tag" style="${tagStyle}">${story.manual?'pinned':story.tag}</span>`+
+        `<div class="p-title">${story.title}</div>`+
+        `<div class="p-meta">${story.loc||'Triangle'} &middot; ${fmtDate(story.date)}</div>`+
+        (story.notes?`<div class="p-notes">${story.notes}</div>`:'')+
+        (story.link?`<a class="p-link" href="${story.link}" target="_blank">Read full story on TBJ &rarr;</a>`:'')+
+        `<div class="p-source">${sourceLabel}</div>`,
+        {maxWidth:260}
+      );
+      m.on('click',()=>{
+        panel.querySelectorAll('.story-card').forEach(c=>c.classList.remove('hl'));
+        card.classList.add('hl');
+        card.scrollIntoView({behavior:'smooth',block:'nearest'});
+      });
+      card.addEventListener('click',()=>{
+        panel.querySelectorAll('.story-card').forEach(c=>c.classList.remove('hl'));
+        card.classList.add('hl');
+        map.setView([story._lat,story._lng],13,{animate:true});
+        m.openPopup();
+      });
+      activeMarkers.push(m);
+    }else{
+      card.style.opacity='0.55';
+      card.title='No Triangle location detected';
+    }
+    panel.appendChild(card);
+  });
+}
+
+// ── Map ────────────────────────────────────────────────────────
+function initMap(){
+  map=L.map('map');
+  map.setView([35.82,-78.80],10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom:19
+  }).addTo(map);
+}
+
+// ── Boot ───────────────────────────────────────────────────────
+function boot(){
+  initMap();
+
+  // Location dropdown
+  const locSel=document.getElementById('in-loc');
+  PLACES.forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=p.name;locSel.appendChild(o);});
+
+  // Load seed + saved pins
+  SEED.forEach(s=>allStories.push(Object.assign({},s)));
+  // Load seed news into news tab
+  SEED_NEWS.forEach(s=>addNewsStory(s));
+  const pins=loadPins();
+  const seedTitles=new Set(SEED.map(s=>s.title));
+  pins.forEach(p=>{if(!seedTitles.has(p.title))allStories.unshift(p);});
+
+  // Filter buttons
+  document.querySelectorAll('.fbtn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter=btn.dataset.tag;
+      renderAll();
+    });
+  });
+
+  // Date filter
+  document.getElementById('date-filter').addEventListener('change',e=>{
+    activeDays=e.target.value;renderAll();
+  });
+
+  // Tabs
+  document.querySelectorAll('.stab').forEach(tab=>{
+    tab.addEventListener('click',()=>{
+      document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      const t=tab.dataset.tab;
+      document.getElementById('story-panel').style.display=t==='stories'?'block':'none';
+      document.getElementById('news-panel').style.display=t==='news'?'block':'none';
+      document.getElementById('add-panel').style.display=t==='add'?'block':'none';
+    });
+  });
+
+  renderAll();
+}
+
+// ── News Tab ──────────────────────────────────────────────────
+const newsStories = [];
+
+function addNewsStory(story) {
+  // Dedup by title
+  if(newsStories.some(n => n.title.toLowerCase().substring(0,60) === story.title.toLowerCase().substring(0,60))) return;
+  newsStories.unshift(story);
+  renderNews();
+  updateNewsTabCount();
+}
+
+function updateNewsTabCount() {
+  const btn = document.querySelector('.stab[data-tab="news"]');
+  if(btn) btn.textContent = newsStories.length > 0 ? `📰 News (${newsStories.length})` : '📰 News';
+}
+
+const TAG_COLORS = {industrial:'#d97706',development:'#0369a1',office:'#7c3aed',retail:'#be185d',land:'#15803d',other:'#6b7280'};
+
+function renderNews() {
+  const panel = document.getElementById('news-panel');
+  const em = document.getElementById('news-empty-msg');
+  if(!newsStories.length) { if(em) em.style.display='block'; return; }
+  if(em) em.style.display='none';
+
+  // Remove existing cards
+  panel.querySelectorAll('.news-card').forEach(c => c.remove());
+
+  newsStories.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'news-card';
+    const color = TAG_COLORS[s.tag] || TAG_COLORS.other;
+    const dateStr = s.date ? new Date(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    div.innerHTML = `
+      <div class="news-meta">
+        <span class="news-badge" style="background:${color}22;color:${color}">${s.tag||'news'}</span>
+        ${dateStr}
+      </div>
+      <h4>${s.title}</h4>
+      ${s.notes ? `<div class="news-notes">${s.notes}</div>` : ''}
+      ${s.link ? `<a href="${s.link}" target="_blank">Read on TBJ →</a>` : ''}
+    `;
+    panel.appendChild(div);
+  });
+}
+
+boot();
+</script>
+</body>
+</html>
