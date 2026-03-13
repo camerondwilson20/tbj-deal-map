@@ -139,7 +139,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
       </div>
 
       <div id="story-panel">
-        <div id="empty-msg">No stories match your current filters.<br><br>Use <strong>+ Pin Story</strong> to add new deals, or adjust the filters above.</div>
+        <div id="empty-msg" style="display:none">No stories match your current filters.<br><br>Use <strong>+ Pin Story</strong> to add new deals, or adjust the filters above.</div>
       </div>
 
       <div id="news-panel">
@@ -618,20 +618,9 @@ function renderAll(){
   document.getElementById('story-count').textContent=filtered.length+' stories';
   document.querySelector('.stab[data-tab="stories"]').textContent='Feed ('+filtered.length+')';
 
-  // Show no-results message if filtered is empty
-  let emptyMsg = panel.querySelector('.empty-filter-msg');
-  if(filtered.length===0){
-    if(!emptyMsg){
-      emptyMsg = document.createElement('div');
-      emptyMsg.className='empty-filter-msg';
-      emptyMsg.style.cssText='padding:24px 16px;color:rgba(255,255,255,0.5);font-size:13px;text-align:center;';
-      panel.appendChild(emptyMsg);
-    }
-    const label = activeDays==='all'?'this filter':activeDays==='7'?'the last 7 days':activeDays==='30'?'the last 30 days':'the last 90 days';
-    emptyMsg.textContent = '0 stories match — no pins for '+label;
-  } else if(emptyMsg){
-    emptyMsg.remove();
-  }
+  // Show/hide static empty-msg
+  const emptyMsg = document.getElementById('empty-msg');
+  if(emptyMsg) emptyMsg.style.display = filtered.length===0 ? 'block' : 'none';
 
   filtered.forEach(story=>{
     const tagKey=story.manual?'manual':story.tag;
