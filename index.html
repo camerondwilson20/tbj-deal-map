@@ -30,11 +30,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
 .fbtn{font-size:11px;padding:3px 11px;border-radius:20px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.65);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.12s;white-space:nowrap}
 .fbtn:hover{background:rgba(255,255,255,0.1);color:#fff}
 .fbtn.active{background:var(--gold);color:var(--navy);border-color:var(--gold);font-weight:600}
-#date-filter{font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);cursor:pointer;font-family:'DM Sans',sans-serif} #date-filter option{background:#0C2340;color:#fff}
+#date-filter{font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);cursor:pointer;font-family:'DM Sans',sans-serif}
+#date-filter option{background:#0C2340;color:#fff}
 #refresh-btn{margin-left:4px;font-size:11px;padding:3px 11px;border-radius:6px;border:1px solid var(--gold);background:transparent;color:var(--gold);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.12s;white-space:nowrap}
 #refresh-btn:hover{background:var(--gold);color:var(--navy)}
 #refresh-btn:disabled{opacity:0.4;cursor:not-allowed}
+#refresh-btn.auto-pulse{animation:pulse-gold 1.4s ease-in-out infinite}
+@keyframes pulse-gold{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0.5)}50%{box-shadow:0 0 0 5px rgba(201,168,76,0)}}
+#last-checked{font-size:10px;color:rgba(255,255,255,0.35);font-family:'DM Mono',monospace;white-space:nowrap}
 #story-count{font-size:11px;color:rgba(255,255,255,0.4);margin-left:auto;font-family:'DM Mono',monospace;white-space:nowrap}
+/* geocode badge */
+.geo-exact{font-size:9px;color:#2e7d32;font-family:'DM Mono',monospace;margin-top:2px}
+.geo-approx{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
 
 /* main */
 #main{display:flex;flex:1;overflow:hidden}
@@ -126,6 +133,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
       <option value="90">Last 90 days</option>
     </select>
     <button id="refresh-btn" onclick="refreshFeed()">⟳ Refresh Feed</button>
+    <span id="last-checked"></span>
     <span id="story-count">— stories</span>
   </div>
 
@@ -168,6 +176,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
           <option value="land">Land</option>
           <option value="retail">Retail</option>
         </select>
+        <label>Street Address <span style="font-weight:400;text-transform:none;letter-spacing:0">(for exact pin)</span></label>
+        <input id="in-address" type="text" placeholder="e.g. 123 Main St, Cary — auto-filled or type manually"/>
         <label>Deal Notes</label>
         <input id="in-notes" type="text" placeholder="Auto-filled — SF, price, tenants..."/>
         <br/><br/>
@@ -296,8 +306,13 @@ function findPlace(loc){
          PLACES.find(p=>loc.toLowerCase().includes(p.name.toLowerCase()))||
          PLACES.find(p=>p.name.toLowerCase().includes(loc.toLowerCase()));
 }
-function makeIcon(tag,isManual){
+function makeIcon(tag,isManual,precise){
   const c=isManual?COLORS.manual:(COLORS[tag]||'#555');
+  if(precise){
+    return L.divIcon({className:'',
+      html:`<div style="position:relative;width:16px;height:22px"><div style="width:16px;height:16px;border-radius:50% 50% 50% 0;background:${c};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.5);transform:rotate(-45deg)"></div></div>`,
+      iconSize:[16,22],iconAnchor:[8,22],popupAnchor:[0,-22]});
+  }
   const s=isManual?14:11;
   return L.divIcon({className:'',
     html:`<div style="width:${s}px;height:${s}px;border-radius:50%;background:${c};border:2.5px solid white;box-shadow:0 1px 6px rgba(0,0,0,0.4)"></div>`,
@@ -361,11 +376,163 @@ async function fetchNitterFeed(instance){
   });
 }
 
-async function refreshFeed(){
+// ── Geocoder (Nominatim / OSM) ─────────────────────────────────
+// Rate-limited: 1 req/sec per OSM policy. Cache results to avoid re-hitting.
+const geocodeCache = {};
+async function geocodeAddress(address) {
+  if(!address) return null;
+  const key = address.toLowerCase().trim();
+  if(geocodeCache[key]) return geocodeCache[key];
+  try {
+    // Append NC/Triangle context so short addresses resolve correctly
+    const query = encodeURIComponent(address + ', North Carolina, USA');
+    const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=us`;
+    const resp = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'SAS-TBJ-DealMap/1.0' } });
+    const data = await resp.json();
+    if(data && data[0]) {
+      const result = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
+      geocodeCache[key] = result;
+      return result;
+    }
+  } catch(e) { console.warn('Geocode failed:', address, e.message); }
+  return null;
+}
+
+// Extract a street address from article text or notes using Claude
+async function extractAddress(title, notes) {
+  const text = (title + ' ' + (notes||'')).substring(0, 500);
+  // Quick regex pass first — look for common address patterns
+  const addrMatch = text.match(/\d{2,5}\s+[A-Z][a-zA-Z\s]{3,40}(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Boulevard|Blvd|Way|Lane|Ln|Court|Ct|Highway|Hwy|Pike|Parkway|Pkwy)[,.\s]/);
+  if(addrMatch) return addrMatch[0].trim().replace(/[,.]$/, '');
+  return null;
+}
+
+// Throttle queue for geocoding (respect 1 req/sec Nominatim limit)
+const geocodeQueue = [];
+let geocodeRunning = false;
+async function queueGeocode(story) {
+  return new Promise((resolve) => {
+    geocodeQueue.push({ story, resolve });
+    if(!geocodeRunning) drainGeocodeQueue();
+  });
+}
+async function drainGeocodeQueue() {
+  geocodeRunning = true;
+  while(geocodeQueue.length) {
+    const { story, resolve } = geocodeQueue.shift();
+    const addr = await extractAddress(story.title, story.notes);
+    if(addr) {
+      const geo = await geocodeAddress(addr);
+      if(geo) {
+        // Validate it's within Triangle bounding box (rough check)
+        if(geo.lat > 35.2 && geo.lat < 36.6 && geo.lng > -80.0 && geo.lng < -77.8) {
+          resolve({ lat: geo.lat, lng: geo.lng, precise: true, addressUsed: addr });
+          await new Promise(r => setTimeout(r, 1100)); // Nominatim rate limit
+          continue;
+        }
+      }
+    }
+    resolve(null); // fallback to submarket centroid
+  }
+  geocodeRunning = false;
+}
+
+// ── AI Article Geocoder ───────────────────────────────────────
+// Uses Claude to extract address from article text, then Nominatim to resolve coords
+const aiGeoCache = {};
+async function aiGeocodeArticle(title, url, existingNotes) {
+  const cacheKey = url || title.substring(0,60);
+  if(aiGeoCache[cacheKey]) return aiGeoCache[cacheKey];
+
+  try {
+    // Fetch article text via allorigins CORS proxy
+    let articleText = title + ' ' + existingNotes;
+    if(url && url.includes('bizjournals.com')) {
+      try {
+        const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+        const resp = await fetch(proxyUrl, {signal: AbortSignal.timeout(8000)});
+        const data = await resp.json();
+        if(data.contents) {
+          // Strip HTML tags, get plain text
+          const tmp = document.createElement('div');
+          tmp.innerHTML = data.contents;
+          articleText = (tmp.innerText || tmp.textContent || '').substring(0, 3000);
+        }
+      } catch(e) { /* proxy failed, use title only */ }
+    }
+
+    // Ask Claude to extract address and location
+    const locList = PLACES.map(p=>p.name).join(', ');
+    const prompt = `From this Triangle Business Journal article text, extract:
+1. Street address of the property (e.g. "800 CentreGreen Way, Cary" or "1548 E Williams St, Apex") — only if explicitly mentioned
+2. Best submarket match from: ${locList}
+
+Return ONLY valid JSON: {"address": "full street address or empty string", "loc": "submarket name"}
+
+Article title: ${title}
+Article text: ${articleText.substring(0, 2000)}`;
+
+    const resp = await fetch(ANTHROPIC_API, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 150,
+        messages: [{role: 'user', content: prompt}]
+      })
+    });
+    const data = await resp.json();
+    const raw = (data.content?.[0]?.text || '').replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(raw);
+
+    let result = { address: parsed.address||'', loc: parsed.loc||'' };
+
+    // If address found, geocode it
+    if(result.address) {
+      const geo = await geocodeAddress(result.address);
+      if(geo && geo.lat > 35.2 && geo.lat < 36.6 && geo.lng > -80.0 && geo.lng < -77.8) {
+        result.lat = geo.lat;
+        result.lng = geo.lng;
+      }
+    }
+
+    aiGeoCache[cacheKey] = result;
+    return result;
+  } catch(e) {
+    console.warn('aiGeocodeArticle failed:', e.message);
+    return null;
+  }
+}
+
+// ── Auto-Refresh Engine ────────────────────────────────────────
+const AUTO_REFRESH_MS = 30 * 60 * 1000; // 30 minutes
+let autoRefreshTimer = null;
+let lastCheckedAt = null;
+
+function updateLastChecked() {
+  const el = document.getElementById('last-checked');
+  if(!el || !lastCheckedAt) return;
+  const mins = Math.round((Date.now() - lastCheckedAt) / 60000);
+  el.textContent = mins < 1 ? 'checked just now' : `checked ${mins}m ago`;
+}
+
+function startAutoRefresh() {
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  // Update the "X min ago" display every minute
+  setInterval(updateLastChecked, 60000);
+  // Auto-refresh every 30 min
+  autoRefreshTimer = setInterval(() => {
+    const btn = document.getElementById('refresh-btn');
+    btn.classList.add('auto-pulse');
+    refreshFeed(true).finally(() => btn.classList.remove('auto-pulse'));
+  }, AUTO_REFRESH_MS);
+}
+
+async function refreshFeed(isAuto=false){
   const btn=document.getElementById('refresh-btn');
   const countEl=document.getElementById('story-count');
   btn.disabled=true;
-  btn.textContent='Checking Gmail...';
+  btn.textContent= isAuto ? '⟳ Auto-checking...' : 'Checking Gmail...';
 
   try {
     // Search for forwarded TBJ emails — handles both direct and forwarded formats
@@ -468,19 +635,37 @@ async function refreshFeed(){
           existing.add(titleKey);
 
           const fullText = ds.title;
-          const detectedLoc = detectLoc(fullText);
+          // First pass: detect location from headline
+          let detectedLoc = detectLoc(fullText);
+          let storyAddress = '';
+          let preciseLat = null, preciseLng = null;
 
-          if(detectedLoc) {
-            allStories.unshift({
+          // Second pass: use Claude to extract address from article page
+          if(ds.link && ds.link.includes('bizjournals.com/triangle/news/')) {
+            try {
+              const aiGeo = await aiGeocodeArticle(ds.title, ds.link, ds.notes||'');
+              if(aiGeo) {
+                if(aiGeo.address) storyAddress = aiGeo.address;
+                if(aiGeo.loc && !detectedLoc) detectedLoc = aiGeo.loc;
+                if(aiGeo.lat && aiGeo.lng) { preciseLat = aiGeo.lat; preciseLng = aiGeo.lng; }
+              }
+            } catch(e) { /* geocode failed, fall through */ }
+          }
+
+          if(detectedLoc || preciseLat) {
+            const story = {
               title: ds.title.substring(0,160),
               link: ds.link,
-              notes: '',
+              notes: ds.notes||'',
               tag: detectTag(fullText),
-              loc: detectedLoc,
+              loc: detectedLoc || 'Triangle',
               date: dateIso,
               source: 'gmail',
               manual: false,
-            });
+              address: storyAddress,
+            };
+            if(preciseLat) { story._lat = preciseLat; story._lng = preciseLng; story._precise = true; }
+            allStories.unshift(story);
             added++;
           } else {
             addNewsStory({
@@ -497,6 +682,8 @@ async function refreshFeed(){
 
     btn.disabled=false;
     btn.textContent='⟳ Refresh Feed';
+    lastCheckedAt = Date.now();
+    updateLastChecked();
     renderAll();
     renderNews();
     updateNewsTabCount();
@@ -510,6 +697,8 @@ async function refreshFeed(){
     console.error('Gmail feed error:', e);
     btn.disabled=false;
     btn.textContent='⟳ Refresh Feed';
+    lastCheckedAt = Date.now();
+    updateLastChecked();
   }
 }
 
@@ -530,6 +719,7 @@ async function runExtract(){
   "title": "concise deal headline, max 120 chars",
   "url": "the bizjournals.com article URL if present in text, else empty string",
   "location": "best match from: ${locList}",
+  "address": "street address if mentioned (e.g. '123 Main St, Cary'), else empty string",
   "tag": "one of: industrial, development, office, land, retail",
   "notes": "key facts: SF or acres, price or $/SF, tenant/buyer/seller, address if mentioned — 1-2 sentences",
   "date": "YYYY-MM-DD if found, else today ${new Date().toISOString().slice(0,10)}"
@@ -552,6 +742,7 @@ ${text.substring(0,4000)}`;
     if(p.url)document.getElementById('in-url').value=p.url;
     if(p.notes)document.getElementById('in-notes').value=p.notes;
     if(p.date)document.getElementById('ai-btn').dataset.date=p.date;
+    if(p.address){document.getElementById('ai-btn').dataset.address=p.address;document.getElementById('in-address').value=p.address;}
     if(p.location){
       const sel=document.getElementById('in-loc');
       const opt=Array.from(sel.options).find(o=>o.value===p.location);
@@ -571,25 +762,40 @@ ${text.substring(0,4000)}`;
 }
 
 // ── Add story ──────────────────────────────────────────────────
-function addStory(){
+async function addStory(){
   const title=document.getElementById('in-title').value.trim();
   const url=document.getElementById('in-url').value.trim();
   const loc=document.getElementById('in-loc').value;
   const tag=document.getElementById('in-tag').value;
   const notes=document.getElementById('in-notes').value.trim();
   const date=document.getElementById('ai-btn').dataset.date||new Date().toISOString().slice(0,10);
+  const address=document.getElementById('in-address').value.trim()||document.getElementById('ai-btn').dataset.address||'';
   const msg=document.getElementById('add-msg');
   if(!title){msg.textContent='Headline required.';msg.style.color='var(--red)';return;}
 
   const story={title,link:url||'https://www.bizjournals.com/triangle/news/commercial-real-estate',
-    notes,tag,loc,date,source:'manual',manual:true,_id:Date.now()};
+    notes,tag,loc,date,address,source:'manual',manual:true,_id:Date.now()};
+
+  // Try to geocode to exact address
+  if(address) {
+    msg.textContent='Geocoding address...';msg.style.color='var(--navy-mid)';
+    const geo = await geocodeAddress(address);
+    if(geo && geo.lat > 35.2 && geo.lat < 36.6 && geo.lng > -80.0 && geo.lng < -77.8) {
+      story._lat = geo.lat;
+      story._lng = geo.lng;
+      story._precise = true;
+    }
+  }
+
   allStories.unshift(story);
   const pins=loadPins();pins.unshift(story);savePins(pins);
 
-  msg.textContent='Pinned!';msg.style.color='var(--green)';
-  ['in-title','in-url','in-notes','in-text'].forEach(id=>document.getElementById(id).value='');
+  msg.textContent = story._precise ? '📍 Pinned to exact address!' : 'Pinned!';
+  msg.style.color='var(--green)';
+  ['in-title','in-url','in-notes','in-text','in-address'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ai-status').textContent='';
   delete document.getElementById('ai-btn').dataset.date;
+  delete document.getElementById('ai-btn').dataset.address;
   setTimeout(()=>{msg.textContent='';},2500);
   document.querySelector('.stab[data-tab="stories"]').click();
   renderAll();
@@ -634,17 +840,23 @@ function renderAll(){
       `<span class="stag" style="${tagStyle}">${story.manual?'pinned':story.tag}</span>`+
       `<div class="stitle">${story.title}</div>`+
       `<div class="smeta">${story.loc||'Triangle'} &middot; ${fmtDate(story.date)}</div>`+
+      (story._precise ? `<div class="geo-exact">📍 ${story.address}</div>` : '')+
       (story.notes?`<div class="snotes">${story.notes}</div>`:'')+
       (story.link?`<a class="slink" href="${story.link}" target="_blank">Read on TBJ &rarr;</a>`:'')+
       `<div class="ssource">${sourceLabel}</div>`;
 
-    if(place){
+    if(place || story._lat){
       if(!story._lat){story._lat=jitter(place.lat);story._lng=jitter(place.lng);}
-      const m=L.marker([story._lat,story._lng],{icon:makeIcon(story.tag,story.manual)}).addTo(map);
+      const precise = story._precise === true;
+      const m=L.marker([story._lat,story._lng],{icon:makeIcon(story.tag,story.manual,precise)}).addTo(map);
+      const geoLabel = precise
+        ? `<div class="geo-exact">📍 ${story.address||'exact address'}</div>`
+        : `<div class="geo-approx">◎ ${story.loc||'Triangle'} area</div>`;
       m.bindPopup(
         `<span class="p-tag" style="${tagStyle}">${story.manual?'pinned':story.tag}</span>`+
         `<div class="p-title">${story.title}</div>`+
-        `<div class="p-meta">${story.loc||'Triangle'} &middot; ${fmtDate(story.date)}</div>`+
+        `<div class="p-meta">${fmtDate(story.date)}</div>`+
+        geoLabel+
         (story.notes?`<div class="p-notes">${story.notes}</div>`:'')+
         (story.link?`<a class="p-link" href="${story.link}" target="_blank">Read full story on TBJ &rarr;</a>`:'')+
         `<div class="p-source">${sourceLabel}</div>`,
@@ -662,7 +874,7 @@ function renderAll(){
         m.openPopup();
       });
       activeMarkers.push(m);
-    }else{
+    }else if(!story._lat){
       card.style.opacity='0.55';
       card.title='No Triangle location detected';
     }
@@ -724,6 +936,8 @@ function boot(){
   });
 
   renderAll();
+  // Start auto-refresh — polls Gmail every 30 min while tab is open
+  startAutoRefresh();
 }
 
 // ── News Tab ──────────────────────────────────────────────────
