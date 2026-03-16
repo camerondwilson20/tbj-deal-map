@@ -93,6 +93,39 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
 #legend{display:flex;gap:8px;flex-wrap:wrap;padding:6px 13px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface)}
 .leg{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
 .leg-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid white;box-shadow:0 0 0 1px rgba(0,0,0,0.18)}
+/* area intel tab */
+#intel-panel{display:none;flex:1;overflow-y:auto;padding:14px;font-family:'DM Sans',sans-serif;flex-direction:column}
+#intel-addr{width:100%;padding:8px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;margin-bottom:8px;box-sizing:border-box}
+#intel-addr:focus{outline:none;border-color:var(--navy-mid);box-shadow:0 0 0 2px rgba(24,95,165,0.1)}
+.intel-row{display:flex;gap:6px;margin-bottom:8px;align-items:center}
+#intel-radius{padding:6px 8px;font-size:11px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;background:#fff}
+#intel-btn{flex:1;padding:8px;font-size:12px;font-weight:600;background:var(--navy);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif}
+#intel-btn:hover{background:var(--navy-mid)}
+#intel-btn:disabled{opacity:0.45;cursor:not-allowed}
+#intel-status{font-size:11px;color:var(--navy-mid);min-height:16px;text-align:center;margin-bottom:6px}
+.intel-section{margin-bottom:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.intel-section-head{padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.intel-section-head .intel-count{font-size:10px;font-weight:400;opacity:0.7}
+.intel-section-body{padding:8px 12px;font-size:11px;line-height:1.5;border-top:1px solid var(--border);background:#fff}
+.intel-section-body.collapsed{display:none}
+.intel-item{padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:11px}
+.intel-item:last-child{border-bottom:none}
+.intel-item .intel-meta{color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;display:block;margin-top:1px}
+.intel-item a{color:var(--navy-mid);font-size:10px;font-weight:600;text-decoration:none;display:inline-block;margin-top:2px}
+.intel-item a:hover{text-decoration:underline}
+.intel-badge{display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;font-family:'DM Mono',monospace;margin-right:4px;white-space:nowrap}
+.flag-red{background:#ffebee;color:#c62828}
+.flag-yellow{background:#fff8e1;color:#e65100}
+.flag-green{background:#e8f5e9;color:#1b5e20}
+.flag-blue{background:#e3f2fd;color:#0d47a1}
+.flag-purple{background:#f3e5f5;color:#6a1b9a}
+.intel-empty{color:var(--muted);font-size:11px;font-style:italic}
+.intel-summary{font-size:11px;line-height:1.6;padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:6px}
+.intel-summary strong{color:var(--ink)}
+/* intel map pins */
+.intel-sale-pin{cursor:pointer}
+.intel-permit-pin{cursor:pointer}
+
 .leaflet-popup-content-wrapper{border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,0.15);font-family:'DM Sans',sans-serif}
 .leaflet-popup-content{margin:11px 13px;min-width:200px}
 .p-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;padding:2px 7px;border-radius:8px;display:inline-block;margin-bottom:4px;font-family:'DM Mono',monospace}
@@ -146,6 +179,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
         <button class="stab active" data-tab="stories">Feed</button>
         <button class="stab" data-tab="news">&#128�; News</button>
         <button class="stab" data-tab="add">+ Pin Story</button>
+        <button class="stab" data-tab="intel">&#128270; Area Intel</button>
       </div>
       <div id="story-panel">
         <div id="empty-msg" style="display:none">No stories match your current filters.<br><br>Use <strong>+ Pin Story</strong> to add new deals, or adjust the filters above.</div>
@@ -181,6 +215,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
         <button id="add-btn" onclick="addStory()">Pin to Map</button>
         <div id="add-msg"></div>
       </div>
+      <div id="intel-panel">
+        <input id="intel-addr" type="text" placeholder="Enter address to analyze (e.g. 1900 Lake Pine Dr, Cary)"/>
+        <div class="intel-row">
+          <select id="intel-radius">
+            <option value="0.25">0.25 mile radius</option>
+            <option value="0.5">0.5 mile radius</option>
+            <option value="1" selected>1 mile radius</option>
+            <option value="2">2 mile radius</option>
+            <option value="3">3 mile radius</option>
+            <option value="5">5 mile radius</option>
+          </select>
+          <button id="intel-btn" onclick="runAreaIntel()">&#128270; Analyze Area</button>
+        </div>
+        <div id="intel-status"></div>
+        <div id="intel-results"></div>
+      </div>
+
       <div id="legend">
         <div class="leg"><div class="leg-dot" style="background:#8B4513"></div>Industrial</div>
         <div class="leg"><div class="leg-dot" style="background:#2E7D32"></div>Development</div>
@@ -191,6 +242,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
         <div class="leg" id="leg-dot" style="display:none"><div class="leg-dot" style="background:#FF8C00;border-radius:2px"></div>DOT</div>
         <div class="leg" id="leg-permits" style="display:none"><div class="leg-dot" style="background:#1E88E5;border-radius:2px"></div>Permit</div>
         <div class="leg" id="leg-zoning" style="display:none"><div class="leg-dot" style="background:#8E24AA;border-radius:2px"></div>Zoning</div>
+        <div class="leg" id="leg-intel-sale" style="display:none"><div class="leg-dot" style="background:#C9A84C;border-radius:2px;transform:rotate(45deg)"></div>Sale</div>
+        <div class="leg" id="leg-intel-permit" style="display:none"><div class="leg-dot" style="background:#1E88E5;border-radius:2px"></div>Permit</div>
+        <div class="leg" id="leg-intel-pending" style="display:none"><div class="leg-dot" style="background:transparent;border:2px solid #FF8C00;border-radius:2px"></div>Pending</div>
       </div>
     </div>
   </div>
@@ -665,7 +719,7 @@ const STIP_PROJECTS = [
   },
   {
     id:'R-2721 (Phase 1)', county:'Wake', route:'Complete 540 SE — NC 55 to I-40',
-    geocodeQuery:'Triangle Expressway Holly Springs NC',
+    geocodeQuery:'Triangle Expressway Holly Springs NC', corridorMiles:5.0,
     desc:'Complete 540 SE Phase 1 — NC 55 Bypass to I-40 — OPEN',
     detail:'~18-mile limited-access toll road from NC 55 Bypass in Apex to I-40 near Garner. Opened Sept 25, 2024. Created the SE Wake industrial corridor connecting Apex, Holly Springs, Fuquay-Varina and Garner.',
     status:'Complete / Open Sept 2024', row_year:2019, const_year:2021, completion_year:2024,
@@ -675,7 +729,7 @@ const STIP_PROJECTS = [
   },
   {
     id:'R-2829A', county:'Wake', route:'Complete 540 SE — I-40 to Rock Quarry Rd',
-    geocodeQuery:'Thomas Bradshaw Freeway Garner NC',
+    geocodeQuery:'Thomas Bradshaw Freeway Garner NC', corridorMiles:5.0,
     desc:'Complete 540 SE Phase 2A — I-40/US-70 to South of Rock Quarry Rd',
     detail:'Under construction by Branch-ST Wooten JV. Extends SE loop south of Garner. Anticipated completion Late 2028. Major industrial catalyst for SE Wake and Johnston County.',
     status:'Under Construction', row_year:2022, const_year:2024, completion_year:2028,
@@ -685,7 +739,7 @@ const STIP_PROJECTS = [
   },
   {
     id:'R-2829B', county:'Johnston/Wake', route:'Complete 540 SE — Rock Quarry Rd to US 264',
-    geocodeQuery:'Complete 540 Garner NC',
+    geocodeQuery:'Complete 540 Garner NC', corridorMiles:6.0,
     desc:'Complete 540 SE Phase 2B — Rock Quarry Rd to I-540/I-87/US 264 (Knightdale)',
     detail:'Under construction by Flatiron/Fred Smith JV. Final ~10-mile segment completing the full SE beltway loop to I-540/US 264 in Knightdale. Anticipated completion Late 2028.',
     status:'Under Construction', row_year:2022, const_year:2024, completion_year:2028,
@@ -696,7 +750,7 @@ const STIP_PROJECTS = [
   // ── US 64 / Cary-Apex ────────────────────────────────────────────────────
   {
     id:'U-5301 (CSX Bridge)', county:'Wake', route:'US-64 at CSX Railroad, Cary/Apex',
-    geocodeQuery:'Laura Duncan Road Cary NC',
+    geocodeQuery:'Lake Pine Drive US 64 Cary NC', corridorMiles:2.0,
     desc:'US-64 CSX Railroad Bridge Replacement — Cary/Apex',
     detail:'Replace CSX railroad bridge spanning US 64 west of Laura Duncan Road. ROW 2026, Construction 2029. First phase of U-5301 — eliminates bridge span constraint before widening can begin.',
     status:'ROW Acquisition 2026', row_year:2026, const_year:2029, completion_year:2031,
@@ -706,7 +760,7 @@ const STIP_PROJECTS = [
   },
   {
     id:'U-5301 (Widening)', county:'Wake', route:'US-64, Laura Duncan Rd to US-1',
-    geocodeQuery:'Laura Duncan Road US 64 Apex NC',
+    geocodeQuery:'Lake Pine Drive Apex NC', corridorMiles:3.0,
     desc:'US-64 Corridor Widening & New Interchanges — Laura Duncan Rd to US 1, Cary/Apex',
     detail:'New interchange at Lake Pine Drive and at Laura Duncan Road. Directly affects 1900 Lake Pine Drive area. ROW 2027, Construction 2031. $331.7M total. Key access change for the Cary/Apex industrial and flex corridor.',
     status:'Design / ROW 2027', row_year:2027, const_year:2031, completion_year:2034,
@@ -727,7 +781,7 @@ const STIP_PROJECTS = [
   // ── US 1 / Capital Blvd North ─────────────────────────────────────────────
   {
     id:'U-5307', county:'Wake', route:'Capital Blvd / US-1, Raleigh to Wake Forest',
-    geocodeQuery:'Capital Boulevard US 1 North Raleigh NC',
+    geocodeQuery:'Capital Boulevard US 1 North Raleigh NC', corridorMiles:6.0,
     desc:'Capital Blvd North Upgrade — US-1 to 6-Lane Freeway (Raleigh to Wake Forest)',
     detail:'Convert Capital Blvd/US-1 from 4-lane road to 6-lane controlled-access freeway with interchanges from Raleigh northward to Wake Forest. Eliminates all driveways and cross-street access — major land use impact along the entire corridor.',
     status:'Design / Engineering', row_year:2027, const_year:2029, completion_year:2033,
@@ -821,7 +875,7 @@ const STIP_PROJECTS = [
   // ── I-40 Corridor ─────────────────────────────────────────────────────────
   {
     id:'I-5887 (Wade-I440)', county:'Wake', route:'I-40, Wade Ave to I-440',
-    geocodeQuery:'Wade Avenue Raleigh NC', fallbackLat:35.8050, fallbackLng:-78.7200,
+    geocodeQuery:'Wade Avenue Raleigh NC', corridorMiles:4.0, fallbackLat:35.8050, fallbackLng:-78.7200,
     desc:'I-40 Widening — Wade Ave to I-440/US-64 (Exit 301), Raleigh',
     detail:'Add 2 general-purpose lanes each direction on I-40 from Wade Ave to I-440/US 64. Key for RTP and West Raleigh industrial/logistics corridor.',
     status:'Programmed', row_year:2027, const_year:2029, completion_year:2033,
@@ -831,7 +885,7 @@ const STIP_PROJECTS = [
   },
   {
     id:'I-5887 (I440-Johnston)', county:'Wake/Johnston', route:'I-40, I-440 to Johnston County Line',
-    geocodeQuery:'Thomas Bradshaw Freeway Garner NC',
+    geocodeQuery:'Thomas Bradshaw Freeway Garner NC', corridorMiles:8.0,
     desc:'I-40 Widening — I-440/US-64 (Exit 301) to Johnston County Line',
     detail:'Extend I-40 widening from Raleigh beltway east through SE Wake toward Johnston County. Critical for industrial development in SE Wake/Clayton/Johnston corridor.',
     status:'Programmed', row_year:2028, const_year:2031, completion_year:2035,
@@ -1054,6 +1108,281 @@ async function toggleOverlay(type,btn){
   if(overlayLayers[type])overlayLayers[type].addTo(map);
 }
 
+// ── Area Intel Engine ─────────────────────────────────────────
+let intelRadiusCircle = null;
+let intelSalePins = [];
+let intelPermitPins = [];
+
+function clearIntelPins(){
+  intelSalePins.forEach(m=>map.removeLayer(m)); intelSalePins=[];
+  intelPermitPins.forEach(m=>map.removeLayer(m)); intelPermitPins=[];
+}
+function milesToDeg(miles){ return miles / 69.0; }
+function bboxFromCenter(lat, lng, miles){
+  const d = milesToDeg(miles);
+  return encodeURIComponent(JSON.stringify({xmin:lng-d,ymin:lat-d,xmax:lng+d,ymax:lat+d}));
+}
+async function safeJson(url, timeout=10000){
+  try{ const r=await fetch(url,{signal:AbortSignal.timeout(timeout)}); return await r.json(); }catch(e){ return null; }
+}
+function fmtPrice(v){ if(!v||v<=0)return null; return v>=1e6?'$'+(v/1e6).toFixed(2)+'M':'$'+(v/1000).toFixed(0)+'K'; }
+function fmtDateTs(ts){ if(!ts)return ''; try{return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}catch(e){return '';} }
+function makeSection(title, color, items, emptyMsg){
+  const body = items.length===0?`<div class="intel-empty">${emptyMsg}</div>`:items.join('');
+  const count = items.length>0?`<span class="intel-count">${items.length}</span>`:'';
+  return `<div class="intel-section">
+    <div class="intel-section-head" style="background:${color}18;color:${color}" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+      <span>${title}</span>${count}
+    </div>
+    <div class="intel-section-body">${body}</div>
+  </div>`;
+}
+
+async function runAreaIntel(){
+  const addrInput = document.getElementById('intel-addr').value.trim();
+  const radiusMiles = parseFloat(document.getElementById('intel-radius').value);
+  const btn = document.getElementById('intel-btn');
+  const status = document.getElementById('intel-status');
+  const resultsEl = document.getElementById('intel-results');
+  if(!addrInput){ status.textContent='Enter an address first.'; return; }
+  btn.disabled=true; status.textContent='Geocoding address...'; resultsEl.innerHTML='';
+
+  // Geocode
+  let lat, lng, displayAddr='';
+  try{
+    const q=encodeURIComponent(addrInput+', North Carolina, USA');
+    const geo=await safeJson(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=us`);
+    if(!geo||!geo[0]){ status.textContent='Address not found.'; btn.disabled=false; return; }
+    lat=parseFloat(geo[0].lat); lng=parseFloat(geo[0].lon);
+    displayAddr=geo[0].display_name.split(',').slice(0,3).join(',');
+    status.textContent=`📍 ${displayAddr} · Fetching data...`;
+  }catch(e){ status.textContent='Geocoding failed.'; btn.disabled=false; return; }
+
+  // Radius circle on map
+  if(intelRadiusCircle) map.removeLayer(intelRadiusCircle);
+  intelRadiusCircle=L.circle([lat,lng],{radius:radiusMiles*1609.34,color:'#C9A84C',weight:2,fillColor:'#C9A84C',fillOpacity:0.06,dashArray:'6 4'}).addTo(map);
+  map.setView([lat,lng],radiusMiles<=0.25?16:radiusMiles<=0.5?15:radiusMiles<=1?14:13,{animate:true});
+
+  // Build spatial query params
+  const bbox=bboxFromCenter(lat,lng,radiusMiles);
+  const geom=`&geometry=${bbox}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects`;
+  const rbase='https://services.arcgis.com/v400IkDOw1ad7Yad/arcgis/rest/services/';
+  const wbase='https://maps.wakegov.com/arcgis/rest/services/Property/';
+
+  // Parallel fetch all sources
+  const [salesData,permitsIssuedData,permitsPendingData,zoningData,devPlansData,femaData] = await Promise.all([
+    safeJson(wbase+`Parcels/MapServer/0/query?where=SALE_DATE+>+date+'${new Date(Date.now()-2*365*86400000).toISOString().slice(0,10)}'+AND+LAND_CODE+IN+('C','D','V','F')${geom}&outFields=OWNER,SITE_ADDRESS,TOTSALPRICE,SALE_DATE,TOTAL_VALUE_ASSD,CALC_AREA,TYPE_USE_DECODE,LAND_CLASS_DECODE,PIN_NUM&f=json&resultRecordCount=100&outSR=4326`),
+    safeJson(rbase+`Building_Permits_Past_31_Days/FeatureServer/0/query?where=permitclassmapped%3D'Non-Residential'+AND+latitude_perm+IS+NOT+NULL${geom}&outFields=permitnum,projectname,description,originaladdress1,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,pin&f=json&resultRecordCount=50&outSR=4326`),
+    safeJson(rbase+`Building_Permits_Pending/FeatureServer/0/query?where=permitclassmapped%3D'Non-Residential'+AND+latitude_perm+IS+NOT+NULL${geom}&outFields=permitnum,projectname,description,originaladdress1,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,applieddate,latitude_perm,longitude_perm,pin&f=json&resultRecordCount=100&outSR=4326`),
+    safeJson(rbase+`Rezoning_Case_Boundaries_View/FeatureServer/0/query?where=StatusDate+>+timestamp+'2022-01-01+00:00:00'${geom}&outFields=ZONE_CASE,ZON_REQ,STATUS,Acres,PrevZoning,StatusDate,CurrentInfoLink,IMAPS_Link&f=json&resultRecordCount=30&outSR=4326`),
+    safeJson(rbase+`Development_Plans/FeatureServer/0/query?where=status+IN+('Review+In+Progress','Pending','Filed','Submitted')${geom}&outFields=plan_name,plan_number,plan_type,status,major_street,developer,acreage,submitted&f=json&resultRecordCount=20&outSR=4326`),
+    safeJson(`https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query?geometry=${bbox}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE,ZONE_SUBTY&f=json&resultRecordCount=20`),
+  ]);
+
+  // NCDOT proximity — geocode all uncached projects (Nominatim, rate-limited)
+  // Show progress since this can take ~20s on first run
+  const uncachedProjects = STIP_PROJECTS.filter(p=>!dotGeoCache[p.id]);
+  if(uncachedProjects.length > 0){
+    status.textContent = `Geocoding NCDOT projects (${uncachedProjects.length} remaining)...`;
+    for(let i=0; i<uncachedProjects.length; i++){
+      const p = uncachedProjects[i];
+      status.textContent = `Geocoding NCDOT projects (${i+1}/${uncachedProjects.length}: ${p.id})...`;
+      await new Promise(res=>setTimeout(res,1100)); // Nominatim 1 req/sec
+      await geocodeDotProject(p);
+    }
+  }
+  const nearbyDot=STIP_PROJECTS.filter(p=>{
+    const g=dotGeoCache[p.id]; if(!g)return false;
+    const dl=Math.abs(g.lat-lat)*69,dn=Math.abs(g.lng-lng)*53;
+    const dist=Math.sqrt(dl*dl+dn*dn);
+    // Use corridor buffer for linear projects so the full project length is considered
+    const matchRadius = radiusMiles + (p.corridorMiles||0.5);
+    return dist <= matchRadius;
+  });
+
+  // ── Plot sale and permit pins on the map ────────────────────────────────
+  clearIntelPins();
+
+  // Sale pins — gold diamond markers
+  for(const feat of (salesData?.features||[])){
+    const a=feat.attributes;
+    if(!feat.geometry?.x||!feat.geometry?.y) continue;
+    const price=fmtPrice(a.TOTSALPRICE);
+    const acres=a.CALC_AREA?a.CALC_AREA.toFixed(2)+' ac':'';
+    const saleDate=fmtDateTs(a.SALE_DATE);
+    const iUrl=a.PIN_NUM?`https://maps.raleighnc.gov/iMAPS/?pin=${a.PIN_NUM}`:'https://maps.raleighnc.gov/iMAPS/';
+    const m=L.marker([feat.geometry.y,feat.geometry.x],{icon:L.divIcon({className:'intel-sale-pin',
+      html:`<div style="width:12px;height:12px;background:#C9A84C;border:2px solid white;border-radius:2px;transform:rotate(45deg);box-shadow:0 1px 5px rgba(0,0,0,0.5)"></div>`,
+      iconSize:[14,14],iconAnchor:[7,7],popupAnchor:[0,-10]})});
+    m.bindPopup(
+      `<span class="p-tag" style="background:#C9A84C;color:#0C2340">SALE</span>`+
+      `<div class="p-title">${a.SITE_ADDRESS||'Unknown'}</div>`+
+      `<div class="p-meta">${[price,saleDate,acres,a.TYPE_USE_DECODE||a.LAND_CLASS_DECODE].filter(Boolean).join(' · ')}</div>`+
+      `<div class="p-meta">Owner: ${a.OWNER||'—'}</div>`+
+      `<a class="p-link" href="${iUrl}" target="_blank">View on iMAPS →</a>`,
+      {maxWidth:240});
+    m.addTo(map);
+    intelSalePins.push(m);
+  }
+
+  // Issued permit pins — blue squares
+  for(const feat of (permitsIssuedData?.features||[])){
+    const a=feat.attributes;
+    const plat=a.latitude_perm||feat.geometry?.y, plng=a.longitude_perm||feat.geometry?.x;
+    if(!plat||!plng) continue;
+    const cost=fmtPrice(a.estprojectcost);
+    const sqft=a.totalsqft?`${a.totalsqft.toLocaleString()} SF`:'';
+    const iUrl=a.pin?`https://maps.raleighnc.gov/iMAPS/?pin=${a.pin}`:'';
+    const m=L.marker([plat,plng],{icon:L.divIcon({className:'intel-permit-pin',
+      html:`<div style="width:11px;height:11px;background:#1E88E5;border:2px solid white;border-radius:2px;box-shadow:0 1px 5px rgba(0,0,0,0.5)"></div>`,
+      iconSize:[13,13],iconAnchor:[6,6],popupAnchor:[0,-10]})});
+    m.bindPopup(
+      `<span class="p-tag" style="background:#1E88E5;color:#fff">PERMIT ISSUED</span>`+
+      `<div class="p-title">${a.projectname||a.description||'Building Permit'}</div>`+
+      `<div class="p-meta">${a.originaladdress1||''}</div>`+
+      `<div class="p-meta">${[a.workclassmapped,sqft,cost,fmtDateTs(a.issueddate)].filter(Boolean).join(' · ')}</div>`+
+      `<div class="p-meta">${a.permitnum||''}${iUrl?` · <a class="p-link" href="${iUrl}" target="_blank">iMAPS →</a>`:''}</div>`,
+      {maxWidth:240});
+    m.addTo(map);
+    intelPermitPins.push(m);
+  }
+
+  // Pending permit pins — orange outline squares
+  for(const feat of (permitsPendingData?.features||[])){
+    const a=feat.attributes;
+    const plat=a.latitude_perm||feat.geometry?.y, plng=a.longitude_perm||feat.geometry?.x;
+    if(!plat||!plng) continue;
+    const cost=fmtPrice(a.estprojectcost);
+    const sqft=a.totalsqft?`${a.totalsqft.toLocaleString()} SF`:'';
+    const iUrl=a.pin?`https://maps.raleighnc.gov/iMAPS/?pin=${a.pin}`:'';
+    const m=L.marker([plat,plng],{icon:L.divIcon({className:'intel-permit-pin',
+      html:`<div style="width:11px;height:11px;background:transparent;border:2.5px solid #FF8C00;border-radius:2px;box-shadow:0 1px 5px rgba(0,0,0,0.4)"></div>`,
+      iconSize:[13,13],iconAnchor:[6,6],popupAnchor:[0,-10]})});
+    m.bindPopup(
+      `<span class="p-tag" style="background:#FF8C00;color:#fff">PERMIT IN REVIEW</span>`+
+      `<div class="p-title">${a.projectname||a.description||'Building Permit'}</div>`+
+      `<div class="p-meta">${a.originaladdress1||''}</div>`+
+      `<div class="p-meta">${[a.workclassmapped,sqft,cost,'Applied: '+fmtDateTs(a.applieddate)].filter(Boolean).join(' · ')}</div>`+
+      `<div class="p-meta">${a.permitnum||''}${iUrl?` · <a class="p-link" href="${iUrl}" target="_blank">iMAPS →</a>`:''}</div>`,
+      {maxWidth:240});
+    m.addTo(map);
+    intelPermitPins.push(m);
+  }
+
+  // Build HTML output
+  let html=`<div class="intel-summary"><strong>📍 ${addrInput}</strong><br>
+    <span style="color:var(--muted);font-family:'DM Mono',monospace;font-size:10px">${radiusMiles} mile radius · ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span></div>`;
+
+  // FLOOD ZONES
+  const floodFeats=femaData?.features||[];
+  const aeZones=floodFeats.filter(f=>f.attributes?.FLD_ZONE==='AE');
+  const zoneTypes=[...new Set(floodFeats.map(f=>f.attributes?.FLD_ZONE).filter(Boolean))];
+  const floodItems=floodFeats.length?[`<div class="intel-item">
+    ${aeZones.length?'<span class="intel-badge flag-red">⚠ AE FLOOD ZONE IN RADIUS</span>':'<span class="intel-badge flag-green">✓ No AE Zone Detected</span>'}
+    <span class="intel-meta">Zones found: ${zoneTypes.join(', ')||'X (minimal)'} · <a href="https://msc.fema.gov/portal/search" target="_blank">FEMA Map Service →</a></span>
+  </div>`]:[];
+  html+=makeSection('🌊 Flood Zones (FEMA)',aeZones.length?'#c62828':'#1b5e20',floodItems,'No flood zone data returned — check FEMA directly.');
+
+  // RECENT SALES
+  const saleFeats=(salesData?.features||[]).sort((a,b)=>(b.attributes.SALE_DATE||0)-(a.attributes.SALE_DATE||0));
+  const saleItems=saleFeats.slice(0,20).map(feat=>{
+    const a=feat.attributes;
+    const price=fmtPrice(a.TOTSALPRICE);
+    const saleDate=fmtDateTs(a.SALE_DATE);
+    const acres=a.CALC_AREA?a.CALC_AREA.toFixed(2)+' ac':'';
+    const useType=a.TYPE_USE_DECODE||a.LAND_CLASS_DECODE||'';
+    const assessed=fmtPrice(a.TOTAL_VALUE_ASSD);
+    const iUrl=a.PIN_NUM?`https://maps.raleighnc.gov/iMAPS/?pin=${a.PIN_NUM}`:'https://maps.raleighnc.gov/iMAPS/';
+    const psfNote = (price && acres && parseFloat(acres)>0) ? ' ('+fmtPrice(a.TOTSALPRICE/(parseFloat(acres)*43560))+'/SF)' : '';
+    return `<div class="intel-item">
+      <strong>${a.SITE_ADDRESS||'Unknown Address'}</strong> ${price?`— ${price}${psfNote}`:'— Price N/A'}
+      <span class="intel-meta">${[saleDate,acres,useType,assessed?'Assessed: '+assessed:''].filter(Boolean).join(' · ')}</span>
+      <span class="intel-meta">Owner: ${a.OWNER||'—'} · <a href="${iUrl}" target="_blank">iMAPS →</a></span>
+    </div>`;
+  });
+  html+=makeSection('💰 Recent Sales (2yr, Wake Co.)', '#1565C0', saleItems, 'No recorded sales in radius in past 2 years.');
+
+  // PERMITS — merge issued (last 30 days) + pending (in review)
+  const issuedFeats=(permitsIssuedData?.features||[]).sort((a,b)=>(b.attributes.issueddate||0)-(a.attributes.issueddate||0));
+  const pendingFeats=(permitsPendingData?.features||[]).sort((a,b)=>(b.attributes.applieddate||0)-(a.attributes.applieddate||0));
+
+  const buildPermitItem = (feat, type) => {
+    const a=feat.attributes;
+    const cost=fmtPrice(a.estprojectcost);
+    const sqft=a.totalsqft?`${a.totalsqft.toLocaleString()} SF`:'';
+    const dateStr=type==='issued'?'Issued: '+fmtDateTs(a.issueddate):'Applied: '+fmtDateTs(a.applieddate);
+    const iUrl=a.pin?`https://maps.raleighnc.gov/iMAPS/?pin=${a.pin}`:'';
+    const dUrl=a.permitnum?`https://data-ral.opendata.arcgis.com/datasets/raleigh::building-permits/explore?where=permitnum%20%3D%20'${encodeURIComponent(a.permitnum)}'`:'';
+    const badge=type==='issued'
+      ?`<span class="intel-badge flag-blue">Issued</span>`
+      :`<span class="intel-badge flag-yellow">In Review</span>`;
+    return `<div class="intel-item">
+      ${badge}<strong>${a.projectname||a.description||'Building Permit'}</strong>
+      <span class="intel-meta">${a.originaladdress1||''} · ${[a.workclassmapped,sqft,cost,dateStr].filter(Boolean).join(' · ')}</span>
+      <span class="intel-meta">${a.permitnum||''} ${iUrl?`· <a href="${iUrl}" target="_blank">iMAPS →</a>`:''}${dUrl?` · <a href="${dUrl}" target="_blank">Record →</a>`:''}</span>
+    </div>`;
+  };
+
+  const permitItems=[
+    ...issuedFeats.slice(0,20).map(f=>buildPermitItem(f,'issued')),
+    ...pendingFeats.slice(0,50).map(f=>buildPermitItem(f,'pending')),
+  ];
+  const permitTitle=`🔨 Permits — ${issuedFeats.length} Issued (30 Days) · ${pendingFeats.length} In Review`;
+  html+=makeSection(permitTitle, '#1E88E5', permitItems, 'No commercial permits found in this radius.');
+
+  // REZONING
+  const zoningFeats=(zoningData?.features||[]).sort((a,b)=>(b.attributes.StatusDate||0)-(a.attributes.StatusDate||0));
+  const zoningItems=zoningFeats.slice(0,15).map(feat=>{
+    const a=feat.attributes;
+    const sDate=fmtDateTs(a.StatusDate);
+    const acres=a.Acres?a.Acres.toFixed(1)+' ac':'';
+    const statusBadge=a.STATUS==='Approved'?'<span class="intel-badge flag-green">Approved</span>':
+      a.STATUS==='Withdrawn'||a.STATUS==='Denied'?`<span class="intel-badge" style="background:#f5f5f5;color:#999">${a.STATUS}</span>`:
+      `<span class="intel-badge flag-yellow">${a.STATUS||'Pending'}</span>`;
+    const iUrl=a.IMAPS_Link||'https://maps.raleighnc.gov/iMAPS/';
+    return `<div class="intel-item">
+      ${statusBadge}<strong>${a.ZONE_CASE||''}</strong> → <strong>${a.ZON_REQ||''}</strong>
+      <span class="intel-meta">${[acres,a.PrevZoning?'From: '+a.PrevZoning:'',sDate].filter(Boolean).join(' · ')}</span>
+      <span class="intel-meta"><a href="${iUrl}" target="_blank">iMAPS →</a>${a.CurrentInfoLink?` · <a href="${a.CurrentInfoLink}" target="_blank">Case details →</a>`:''}</span>
+    </div>`;
+  });
+  html+=makeSection('📋 Rezoning Cases (Since 2022)', '#8E24AA', zoningItems, 'No rezoning cases in this radius since 2022.');
+
+  // DEV PLANS
+  const devItems=(devPlansData?.features||[]).slice(0,10).map(feat=>{
+    const a=feat.attributes;
+    const submitted=a.submitted?new Date(a.submitted).toLocaleDateString('en-US',{month:'short',year:'numeric'}):'';
+    const acres=a.acreage?a.acreage.toFixed(1)+' ac':'';
+    return `<div class="intel-item">
+      <span class="intel-badge flag-yellow">${a.plan_type||'Plan'}</span><strong>${a.plan_name||a.plan_number||'Dev Plan'}</strong>
+      <span class="intel-meta">${[a.developer,a.major_street?'Near '+a.major_street.trim():'',acres,a.status,submitted?'Filed '+submitted:''].filter(Boolean).join(' · ')}</span>
+      <span class="intel-meta"><a href="https://raleighnc.gov/permits-development/services/development-plans-rezoning" target="_blank">Raleigh dev plans portal →</a></span>
+    </div>`;
+  });
+  html+=makeSection('🏗 Dev Plans In Review', '#2E7D32', devItems, 'No active development plans in review within this radius.');
+
+  // NCDOT
+  const dotItems=nearbyDot.map(p=>{
+    const scol={'Complete / Open':'#2E7D32','Complete / Open Sept 2024':'#2E7D32','Under Construction':'#E65100'}[p.status]||'#FF8C00';
+    return `<div class="intel-item">
+      <span class="intel-badge" style="background:${scol}22;color:${scol}">${p.status}</span><strong>${p.id}</strong>
+      <span class="intel-meta">${p.desc}</span>
+      <span class="intel-meta">${p.cost} · ${[p.row_year?'ROW '+p.row_year:'',p.const_year?'Const. '+p.const_year:''].filter(Boolean).join(' · ')}</span>
+      <span class="intel-meta"><a href="${p.url}" target="_blank">Project details →</a> · <a href="${p.ncdot}" target="_blank">NCDOT STIP →</a></span>
+    </div>`;
+  });
+  const dotHint='No NCDOT STIP projects within this radius — ' + (STIP_PROJECTS.length + ' projects checked');
+  html+=makeSection('🚧 NCDOT STIP Projects Nearby', '#FF8C00', dotItems, dotHint);
+
+  resultsEl.innerHTML=html;
+  status.textContent=`✓ Complete — ${saleFeats.length} sales · ${issuedFeats.length} permits issued · ${pendingFeats.length} in review · ${zoningFeats.length} rezonings · ${devPlansData?.features?.length||0} dev plans`;
+  // Show intel legend items
+  ['leg-intel-sale','leg-intel-permit','leg-intel-pending'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display='flex';
+  });
+  btn.disabled=false;
+}
+
 // ── Boot ───────────────────────────────────────────────────────
 function boot(){
   initMap();
@@ -1079,6 +1408,8 @@ function boot(){
       document.getElementById('story-panel').style.display=t==='stories'?'block':'none';
       document.getElementById('news-panel').style.display=t==='news'?'block':'none';
       document.getElementById('add-panel').style.display=t==='add'?'block':'none';
+      document.getElementById('intel-panel').style.display=t==='intel'?'flex':'none';
+      document.getElementById('intel-panel').style.flexDirection='column';
     });
   });
   renderAll();
