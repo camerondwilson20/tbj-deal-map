@@ -1171,9 +1171,9 @@ async function runAreaIntel(){
 
   // Parallel fetch all sources
   const [salesData,permitsIssuedData,permitsPendingData,zoningData,devPlansData,femaData] = await Promise.all([
-    safeJson(wbase+`Parcels/MapServer/0/query?where=SALE_DATE+>+date+'${new Date(Date.now()-2*365*86400000).toISOString().slice(0,10)}'+AND+LAND_CODE+IN+('C','D','V','F')${geom}&outFields=OWNER,SITE_ADDRESS,TOTSALPRICE,SALE_DATE,TOTAL_VALUE_ASSD,CALC_AREA,TYPE_USE_DECODE,LAND_CLASS_DECODE,PIN_NUM&f=json&resultRecordCount=100&outSR=4326`),
-    safeJson(rbase+`Building_Permits_Past_31_Days/FeatureServer/0/query?where=permitclassmapped%3D'Non-Residential'+AND+latitude_perm+IS+NOT+NULL${geom}&outFields=permitnum,projectname,description,originaladdress1,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,pin&f=json&resultRecordCount=50&outSR=4326`),
-    safeJson(rbase+`Building_Permits_Pending/FeatureServer/0/query?where=permitclassmapped%3D'Non-Residential'+AND+latitude_perm+IS+NOT+NULL${geom}&outFields=permitnum,projectname,description,originaladdress1,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,applieddate,latitude_perm,longitude_perm,pin&f=json&resultRecordCount=100&outSR=4326`),
+    safeJson(wbase+`Parcels/MapServer/0/query?where=SALE_DATE+>+date+'${new Date(Date.now()-3*365*86400000).toISOString().slice(0,10)}'+AND+LAND_CODE+IN+('C','D','V','F')+AND+TOTSALPRICE+>+0${geom}&outFields=OWNER,SITE_ADDRESS,TOTSALPRICE,SALE_DATE,TOTAL_VALUE_ASSD,CALC_AREA,TYPE_USE_DECODE,LAND_CLASS_DECODE,PIN_NUM&f=json&resultRecordCount=200&orderByFields=TOTSALPRICE+DESC&outSR=4326`),
+    safeJson(rbase+`Building_Permits_Past_31_Days/FeatureServer/0/query?where=permitclassmapped%3D'Non-Residential'+AND+latitude_perm+IS+NOT+NULL+AND+(workclassmapped%3D'New'+OR+estprojectcost+>%3D+100000)${geom}&outFields=permitnum,projectname,description,originaladdress1,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,pin&f=json&resultRecordCount=50&orderByFields=estprojectcost+DESC&outSR=4326`),
+    safeJson(rbase+`Building_Permits_Pending/FeatureServer/0/query?where=permitclassmapped%3D'Non-Residential'+AND+latitude_perm+IS+NOT+NULL+AND+(workclassmapped%3D'New'+OR+estprojectcost+>%3D+250000)+AND+applieddate+>%3D+timestamp+'2020-01-01+00:00:00'${geom}&outFields=permitnum,projectname,description,originaladdress1,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,applieddate,latitude_perm,longitude_perm,pin&f=json&resultRecordCount=100&orderByFields=estprojectcost+DESC&outSR=4326`),
     safeJson(rbase+`Rezoning_Case_Boundaries_View/FeatureServer/0/query?where=StatusDate+>+timestamp+'2022-01-01+00:00:00'${geom}&outFields=ZONE_CASE,ZON_REQ,STATUS,Acres,PrevZoning,StatusDate,CurrentInfoLink,IMAPS_Link&f=json&resultRecordCount=30&outSR=4326`),
     safeJson(rbase+`Development_Plans/FeatureServer/0/query?where=status+IN+('Review+In+Progress','Pending','Filed','Submitted')${geom}&outFields=plan_name,plan_number,plan_type,status,major_street,developer,acreage,submitted&f=json&resultRecordCount=20&outSR=4326`),
     safeJson(`https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query?geometry=${bbox}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE,ZONE_SUBTY&f=json&resultRecordCount=20`),
@@ -1204,20 +1204,39 @@ async function runAreaIntel(){
   clearIntelPins();
 
   // Sale pins — gold diamond markers
+  // Wake County parcels return polygon rings — compute centroid from ring bbox midpoint
+  function ringCentroid(rings){
+    if(!rings||!rings[0]||!rings[0].length) return null;
+    const ring=rings[0];
+    let sumX=0,sumY=0;
+    for(const [x,y] of ring){sumX+=x;sumY+=y;}
+    return {lat:sumY/ring.length, lng:sumX/ring.length};
+  }
+
   for(const feat of (salesData?.features||[])){
     const a=feat.attributes;
-    if(!feat.geometry?.x||!feat.geometry?.y) continue;
+    // Handle both point (x/y) and polygon (rings) geometry
+    let pinLat, pinLng;
+    if(feat.geometry?.x && feat.geometry?.y){
+      pinLat=feat.geometry.y; pinLng=feat.geometry.x;
+    } else if(feat.geometry?.rings){
+      const c=ringCentroid(feat.geometry.rings);
+      if(!c) continue;
+      pinLat=c.lat; pinLng=c.lng;
+    } else continue;
+
     const price=fmtPrice(a.TOTSALPRICE);
+    const psfNote=a.TOTSALPRICE&&a.CALC_AREA&&a.CALC_AREA>0?` (${fmtPrice(Math.round(a.TOTSALPRICE/(a.CALC_AREA*43560)))}/SF)`:'';
     const acres=a.CALC_AREA?a.CALC_AREA.toFixed(2)+' ac':'';
     const saleDate=fmtDateTs(a.SALE_DATE);
     const iUrl=a.PIN_NUM?`https://maps.raleighnc.gov/iMAPS/?pin=${a.PIN_NUM}`:'https://maps.raleighnc.gov/iMAPS/';
-    const m=L.marker([feat.geometry.y,feat.geometry.x],{icon:L.divIcon({className:'intel-sale-pin',
+    const m=L.marker([pinLat,pinLng],{icon:L.divIcon({className:'intel-sale-pin',
       html:`<div style="width:12px;height:12px;background:#C9A84C;border:2px solid white;border-radius:2px;transform:rotate(45deg);box-shadow:0 1px 5px rgba(0,0,0,0.5)"></div>`,
       iconSize:[14,14],iconAnchor:[7,7],popupAnchor:[0,-10]})});
     m.bindPopup(
       `<span class="p-tag" style="background:#C9A84C;color:#0C2340">SALE</span>`+
       `<div class="p-title">${a.SITE_ADDRESS||'Unknown'}</div>`+
-      `<div class="p-meta">${[price,saleDate,acres,a.TYPE_USE_DECODE||a.LAND_CLASS_DECODE].filter(Boolean).join(' · ')}</div>`+
+      `<div class="p-meta">${[price+psfNote,saleDate,acres,a.TYPE_USE_DECODE||a.LAND_CLASS_DECODE].filter(Boolean).join(' · ')}</div>`+
       `<div class="p-meta">Owner: ${a.OWNER||'—'}</div>`+
       `<a class="p-link" href="${iUrl}" target="_blank">View on iMAPS →</a>`,
       {maxWidth:240});
@@ -1225,10 +1244,10 @@ async function runAreaIntel(){
     intelSalePins.push(m);
   }
 
-  // Issued permit pins — blue squares
+  // Issued permit pins — blue squares (use latitude_perm/longitude_perm attribute fields, not geometry)
   for(const feat of (permitsIssuedData?.features||[])){
     const a=feat.attributes;
-    const plat=a.latitude_perm||feat.geometry?.y, plng=a.longitude_perm||feat.geometry?.x;
+    const plat=a.latitude_perm, plng=a.longitude_perm;
     if(!plat||!plng) continue;
     const cost=fmtPrice(a.estprojectcost);
     const sqft=a.totalsqft?`${a.totalsqft.toLocaleString()} SF`:'';
@@ -1250,7 +1269,7 @@ async function runAreaIntel(){
   // Pending permit pins — orange outline squares
   for(const feat of (permitsPendingData?.features||[])){
     const a=feat.attributes;
-    const plat=a.latitude_perm||feat.geometry?.y, plng=a.longitude_perm||feat.geometry?.x;
+    const plat=a.latitude_perm, plng=a.longitude_perm;
     if(!plat||!plng) continue;
     const cost=fmtPrice(a.estprojectcost);
     const sqft=a.totalsqft?`${a.totalsqft.toLocaleString()} SF`:'';
@@ -1300,7 +1319,7 @@ async function runAreaIntel(){
       <span class="intel-meta">Owner: ${a.OWNER||'—'} · <a href="${iUrl}" target="_blank">iMAPS →</a></span>
     </div>`;
   });
-  html+=makeSection('💰 Recent Sales (2yr, Wake Co.)', '#1565C0', saleItems, 'No recorded sales in radius in past 2 years.');
+  html+=makeSection('💰 Recent Sales (3yr, Wake Co. — Commercial/Industrial/Vacant)', '#1565C0', saleItems, 'No recorded sales in radius in past 2 years.');
 
   // PERMITS — merge issued (last 30 days) + pending (in review)
   const issuedFeats=(permitsIssuedData?.features||[]).sort((a,b)=>(b.attributes.issueddate||0)-(a.attributes.issueddate||0));
