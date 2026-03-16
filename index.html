@@ -658,8 +658,8 @@ async function fetchDotLayer(){
     if(geom.rings){
       const ll=geom.rings[0].map(([x,y])=>[y,x]);
       const poly=L.polygon(ll,{color:'#FF8C00',weight:2.5,fillColor:'#FF8C00',fillOpacity:0.08,dashArray:'6 4'});
-      const popup=`<span class="p-tag" style="background:#FF8C00;color:#fff">NCDOT</span><div class="p-title">Project ${attr.ProjectID}</div><div class="p-meta">NCDOT Transportation Improvement Program</div>${attr.URL?`<a class="p-link" href="${attr.URL}" target="_blank">View project details &rarr;</a>`:''}`;
-      poly.bindPopup(popup,{maxWidth:240});
+      const popup=`<span class="p-tag" style="background:#FF8C00;color:#fff">NCDOT</span><div class="p-title">Project ${attr.ProjectID}</div><div class="p-meta">NCDOT Transportation Improvement Program</div><div style="margin-top:5px;display:flex;flex-direction:column;gap:3px">${attr.URL?`<a class="p-link" href="${attr.URL}" target="_blank">&#128279; Project page &rarr;</a>`:''}<a class="p-link" href="https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=${attr.ProjectID}" target="_blank" style="color:#FF8C00">&#128336; NCDOT STIP detail &rarr;</a></div>`;
+      poly.bindPopup(popup,{maxWidth:260});
       lg.addLayer(poly);
       try{const center=L.polygon(ll).getBounds().getCenter();const m=L.marker([center.lat,center.lng],{icon:makeDotIcon()});m.bindPopup(popup,{maxWidth:220});lg.addLayer(m);}catch(e){}
     }else if(geom.x&&geom.y){
@@ -697,7 +697,11 @@ async function fetchPermitsLayer(){
       `<div class="p-meta">${addr}</div>`+
       `<div class="p-notes">${[a.workclassmapped,a.landusedescription,sqft,cost].filter(Boolean).join(' · ')}</div>`+
       `<div class="p-meta">Issued ${issued} · ${a.statuscurrentmapped||''}</div>`+
-      `<div class="p-source">${a.permitnum||''}</div>`,{maxWidth:260});
+      `<div class="p-source">${a.permitnum||''}</div>` +
+      `<div style="margin-top:5px;display:flex;flex-direction:column;gap:3px">` +
+      (a.permitnum ? `<a class="p-link" href="https://permit.raleighnc.gov/EnerGov_Prod/SelfService/#/search?searchModule=Permits&searchText=${encodeURIComponent(a.permitnum)}" target="_blank" style="color:#1E88E5">&#128196; Raleigh permit lookup &rarr;</a>` : '') +
+      `<a class="p-link" href="https://maps.raleighnc.gov/iMAPS/?address=${encodeURIComponent((a.originaladdress1||'')+', Raleigh, NC')}" target="_blank" style="color:#1E88E5">&#128205; View on iMAPS &rarr;</a>` +
+      `</div>`,{maxWidth:280});
     lg.addLayer(m);count++;
   }
   setOverlayStatus(`${count} commercial permits loaded`);
@@ -709,7 +713,7 @@ async function fetchZoningLayer(){
   setOverlayStatus('Loading zoning cases...');
   const lg=L.layerGroup();
   // *** KEY FIX: use timestamp string format (NOT epoch ms) + outSR=4326 for proper coordinates ***
-  const zoningUrl=RALEIGH_BASE+`Rezoning_Case_Boundaries_View/FeatureServer/0/query?where=StatusDate+>+timestamp+'2023-01-01+00:00:00'&outFields=ZONE_CASE,Location,Acres,PrevZoning,ZON_REQ,STATUS,StatusDate,CASE_TYPE,CurrentInfoLink&f=json&resultRecordCount=300&outSR=4326`;
+  const zoningUrl=RALEIGH_BASE+`Rezoning_Case_Boundaries_View/FeatureServer/0/query?where=StatusDate+>+timestamp+'2023-01-01+00:00:00'&outFields=ZONE_CASE,Location,Acres,PrevZoning,ZON_REQ,STATUS,StatusDate,CASE_TYPE,CurrentInfoLink,IMAPS_Link,EG_Link&f=json&resultRecordCount=300&outSR=4326`;
   const dpUrl=RALEIGH_BASE+`Development_Plans/FeatureServer/0/query?where=status+IN+('Review+In+Progress','Pending','Filed','Submitted')&outFields=plan_name,plan_number,plan_type,status,major_street,developer,acreage,submitted,zoning&f=json&resultRecordCount=200`;
   const [zData,dpData]=await Promise.all([
     fetch(zoningUrl,{signal:AbortSignal.timeout(10000)}).then(r=>r.json()),
@@ -729,7 +733,11 @@ async function fetchZoningLayer(){
       `<div class="p-title">${a.ZONE_CASE||''} &mdash; ${a.ZON_REQ||'Requested'}</div>`+
       `<div class="p-notes">${[a.Acres?a.Acres.toFixed(1)+' acres':'',a.PrevZoning?'From: '+a.PrevZoning:'',a.Location||''].filter(Boolean).join(' · ')}</div>`+
       `<div class="p-meta">Status: ${a.STATUS||''} · ${statusDate}</div>`+
-      (a.CurrentInfoLink?`<a class="p-link" href="${a.CurrentInfoLink}" target="_blank">Case details &rarr;</a>`:'');
+      `<div style="margin-top:5px;display:flex;flex-direction:column;gap:3px">`+
+      (a.IMAPS_Link?`<a class="p-link" href="${a.IMAPS_Link}" target="_blank" style="color:#8E24AA">&#128205; View parcel on iMAPS &rarr;</a>`:`<a class="p-link" href="https://maps.raleighnc.gov/iMAPS/" target="_blank" style="color:#8E24AA">&#128205; Raleigh iMAPS &rarr;</a>`)+
+      (a.EG_Link?`<a class="p-link" href="${a.EG_Link}" target="_blank" style="color:#8E24AA">&#128196; Case documents &rarr;</a>`:'')+
+      `<a class="p-link" href="https://raleighnc.gov/planning/services/rezoning-cases" target="_blank" style="color:#8E24AA">&#128196; Raleigh rezoning portal &rarr;</a>`+
+      `</div>`;
     poly.bindPopup(popup,{maxWidth:260});
     try{const center=L.polygon(ll).getBounds().getCenter();const m=L.marker([center.lat,center.lng],{icon:makeZoningIcon()});m.bindPopup(popup,{maxWidth:260});lg.addLayer(m);}catch(e){}
     lg.addLayer(poly);count++;
@@ -743,7 +751,11 @@ async function fetchZoningLayer(){
       `<span class="p-tag" style="background:#8E24AA;color:#fff">DEV PLAN</span>`+
       `<div class="p-title">${a.plan_name||a.plan_number||'Development Plan'}</div>`+
       `<div class="p-notes">${[a.plan_type,a.major_street?'Near '+a.major_street.trim():'',a.acreage?a.acreage.toFixed(1)+' ac':'',a.developer||''].filter(Boolean).join(' · ')}</div>`+
-      `<div class="p-meta">Status: ${a.status||''} · Submitted ${submitted}</div>`,{maxWidth:260});
+      `<div class="p-meta">Status: ${a.status||''} · Submitted ${submitted}</div>`+
+      `<div style="margin-top:5px;display:flex;flex-direction:column;gap:3px">`+
+      `<a class="p-link" href="https://raleighnc.gov/permits-development/services/development-plans-rezoning" target="_blank" style="color:#8E24AA">&#128196; Raleigh dev plans portal &rarr;</a>`+
+      `<a class="p-link" href="https://maps.raleighnc.gov/iMAPS/" target="_blank" style="color:#8E24AA">&#128205; Raleigh iMAPS &rarr;</a>`+
+      `</div>`,{maxWidth:280});
     lg.addLayer(m);count++;
   }
   setOverlayStatus(`${count} zoning items loaded`);
