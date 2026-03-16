@@ -652,141 +652,263 @@ function makeZoningIcon(){
 // Covers Wake, Durham, Orange, Johnston, Chatham, Franklin counties
 // Focused on highway/interchange projects with CRE relevance (ROW acquisition, access changes)
 const STIP_PROJECTS = [
+  // ── I-540 Beltway ────────────────────────────────────────────────────────
   {
-    id:'I-5970', county:'Wake', route:'I-540',
-    desc:'Complete 540 — Triangle Expressway Western Extension',
-    detail:'Extend I-540 from NC 540 in Cary westward through Morrisville. Closes the beltway loop. Major industrial/logistics catalyst for Western Wake.',
-    status:'Under Construction', row_year:2022, const_year:2025, completion_year:2026,
-    cost:'$830M', lat:35.8050, lng:-78.8300,
+    id:'I-5970', county:'Wake', route:'I-540 / Western Wake',
+    geocodeQuery:'I-540 Morrisville NC',
+    desc:'I-540 Western Wake Extension — Completes Beltway Loop',
+    detail:'Extends I-540 westward completing the Triangle beltway loop through Morrisville. Open to traffic. Major industrial/logistics catalyst for Western Wake and RTP corridor.',
+    status:'Complete / Open', row_year:2022, const_year:2022, completion_year:2026,
+    cost:'$830M',
     url:'https://ncdot.publicinput.com/4202/',
-    ncdot:'https://www.ncdot.gov/projects/Pages/default.aspx'
+    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=I-5970'
   },
   {
-    id:'R-2721/R-2828/R-2829', county:'Wake/Johnston', route:'Complete 540 SE',
-    desc:'Complete 540 SE Extension — NC 55 Apex to US 64/264 Knightdale',
-    detail:'New limited-access toll road from NC 55 Bypass in Apex to US 64/264 (I-495) near Knightdale. Connects Southern Wake to Eastern Wake. Massive industrial land play for Johnston County and SE Wake corridor. Phase 1 (Apex–Garner) complete. Phase 2 under construction.',
-    status:'Phase 2 Under Construction', row_year:2022, const_year:2023, completion_year:2028,
-    cost:'$2.6B total', lat:35.7050, lng:-78.6200,
-    url:'https://www.ncdot.gov/projects/complete540/Pages/default.aspx',
+    id:'R-2721 (Phase 1)', county:'Wake', route:'Complete 540 SE — NC 55 to I-40',
+    geocodeQuery:'Triangle Expressway Holly Springs NC',
+    desc:'Complete 540 SE Phase 1 — NC 55 Bypass to I-40 — OPEN',
+    detail:'~18-mile limited-access toll road from NC 55 Bypass in Apex to I-40 near Garner. Opened Sept 25, 2024. Created the SE Wake industrial corridor connecting Apex, Holly Springs, Fuquay-Varina and Garner.',
+    status:'Complete / Open Sept 2024', row_year:2019, const_year:2021, completion_year:2024,
+    cost:'$1.1B',
+    url:'https://www.ncdot.gov/projects/complete-540/Pages/default.aspx',
     ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=R-2721'
   },
   {
-    id:'U-5301', county:'Wake', route:'US-64 / Cary',
-    desc:'US-64 Improvements — US 1 to Laura Duncan Road, Cary/Apex',
-    detail:'Widen US-64 corridor through Cary/Apex including pedestrian/bike accommodations. $331.7M project. Directly affects access to 1900 Lake Pine Drive area and Cary/Apex industrial corridor.',
-    status:'ROW Acquisition', row_year:2027, const_year:2030, completion_year:2033,
-    cost:'$331.7M', lat:35.7600, lng:-78.8100,
-    url:'https://www.carync.gov/projects-initiatives/project-updates/street-projects/ncdot-local-projects',
+    id:'R-2829A', county:'Wake', route:'Complete 540 SE — I-40 to Rock Quarry Rd',
+    geocodeQuery:'Thomas Bradshaw Freeway Garner NC',
+    desc:'Complete 540 SE Phase 2A — I-40/US-70 to South of Rock Quarry Rd',
+    detail:'Under construction by Branch-ST Wooten JV. Extends SE loop south of Garner. Anticipated completion Late 2028. Major industrial catalyst for SE Wake and Johnston County.',
+    status:'Under Construction', row_year:2022, const_year:2024, completion_year:2028,
+    cost:'(Phase 2 total ~$650M)',
+    url:'https://www.ncdot.gov/projects/complete-540/Pages/default.aspx',
+    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=R-2829'
+  },
+  {
+    id:'R-2829B', county:'Johnston/Wake', route:'Complete 540 SE — Rock Quarry Rd to US 264',
+    geocodeQuery:'Complete 540 Garner NC',
+    desc:'Complete 540 SE Phase 2B — Rock Quarry Rd to I-540/I-87/US 264 (Knightdale)',
+    detail:'Under construction by Flatiron/Fred Smith JV. Final ~10-mile segment completing the full SE beltway loop to I-540/US 264 in Knightdale. Anticipated completion Late 2028.',
+    status:'Under Construction', row_year:2022, const_year:2024, completion_year:2028,
+    cost:'(Phase 2 total ~$650M)',
+    url:'https://www.ncdot.gov/projects/complete-540/Pages/default.aspx',
+    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=R-2829'
+  },
+  // ── US 64 / Cary-Apex ────────────────────────────────────────────────────
+  {
+    id:'U-5301 (CSX Bridge)', county:'Wake', route:'US-64 at CSX Railroad, Cary/Apex',
+    geocodeQuery:'Laura Duncan Road Cary NC',
+    desc:'US-64 CSX Railroad Bridge Replacement — Cary/Apex',
+    detail:'Replace CSX railroad bridge spanning US 64 west of Laura Duncan Road. ROW 2026, Construction 2029. First phase of U-5301 — eliminates bridge span constraint before widening can begin.',
+    status:'ROW Acquisition 2026', row_year:2026, const_year:2029, completion_year:2031,
+    cost:'(Part of $331.7M)',
+    url:'https://www.ncdot.gov/projects/us-64-apex-cary/Pages/default.aspx',
     ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=U-5301'
   },
   {
-    id:'U-5307', county:'Wake', route:'US-1/Capital Blvd',
-    desc:'Capital Blvd (US-1) Upgrade — Wade Ave to Peace St, Raleigh',
-    detail:'Widen and reconstruct Capital Blvd/US-1 through North Raleigh with interchange improvements at Peace Street. Major North Raleigh commercial corridor impact.',
-    status:'Design/Engineering', row_year:2026, const_year:2028, completion_year:2031,
-    cost:'$180M+', lat:35.8350, lng:-78.6500,
+    id:'U-5301 (Widening)', county:'Wake', route:'US-64, Laura Duncan Rd to US-1',
+    geocodeQuery:'Laura Duncan Road US 64 Apex NC',
+    desc:'US-64 Corridor Widening & New Interchanges — Laura Duncan Rd to US 1, Cary/Apex',
+    detail:'New interchange at Lake Pine Drive and at Laura Duncan Road. Directly affects 1900 Lake Pine Drive area. ROW 2027, Construction 2031. $331.7M total. Key access change for the Cary/Apex industrial and flex corridor.',
+    status:'Design / ROW 2027', row_year:2027, const_year:2031, completion_year:2034,
+    cost:'$331.7M',
+    url:'https://www.ncdot.gov/projects/us-64-apex-cary/Pages/default.aspx',
+    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=U-5301'
+  },
+  {
+    id:'R-5887', county:'Wake', route:'US-64 at NC-751, SW Cary',
+    geocodeQuery:'NC 751 Cary NC', fallbackLat:35.7480, fallbackLng:-78.8850,
+    desc:'US-64 / NC-751 New Interchange — SW Cary',
+    detail:'Construct new interchange bridging NC 751 over US 64. ROW 2027, Construction 2029. Opens SW Cary and Jordan Lake corridor for development access.',
+    status:'Design / ROW 2027', row_year:2027, const_year:2029, completion_year:2032,
+    cost:'$65M est.',
+    url:'https://www.carync.gov/projects-initiatives/project-updates/street-projects/ncdot-local-projects',
+    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=R-5887'
+  },
+  // ── US 1 / Capital Blvd North ─────────────────────────────────────────────
+  {
+    id:'U-5307', county:'Wake', route:'Capital Blvd / US-1, Raleigh to Wake Forest',
+    geocodeQuery:'Capital Boulevard US 1 North Raleigh NC',
+    desc:'Capital Blvd North Upgrade — US-1 to 6-Lane Freeway (Raleigh to Wake Forest)',
+    detail:'Convert Capital Blvd/US-1 from 4-lane road to 6-lane controlled-access freeway with interchanges from Raleigh northward to Wake Forest. Eliminates all driveways and cross-street access — major land use impact along the entire corridor.',
+    status:'Design / Engineering', row_year:2027, const_year:2029, completion_year:2033,
+    cost:'$400M+',
     url:'https://www.ncdot.gov/projects/capital-boulevard-upgrade/Pages/default.aspx',
     ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=U-5307'
   },
   {
-    id:'U-6200', county:'Wake', route:'Aviation Pkwy',
-    desc:'Aviation Parkway Widening — 4-Lane Divided, Morrisville',
-    detail:'Widen Aviation Parkway (SR 1002) to 4-lane median-divided roadway. ROW begins 2026, construction 2029. $57.3M. Affects RDU/RTP industrial and office corridor access.',
+    id:'U-6066', county:'Wake', route:'US-1, NC-55 to US-64, Cary',
+    geocodeQuery:'US 1 NC 55 Cary Parkway Cary NC',
+    desc:'US-1 Widening — NC 55 to US 64, Cary (Unfunded Construction)',
+    detail:'Additional lanes on US 1 between NC 55 and US 64 plus NC 55 interchange improvements. Funded for preliminary engineering ONLY — construction NOT funded in 10-year STIP (post-2033 at earliest).',
+    status:'Preliminary Engineering Only', row_year:null, const_year:null, completion_year:null,
+    cost:'TBD',
+    url:'https://www.carync.gov/projects-initiatives/project-updates/street-projects/ncdot-local-projects',
+    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=U-6066'
+  },
+  {
+    id:'HE-0010', county:'Wake', route:'US-1 / New Hill Holleman Rd, Apex/New Hill',
+    geocodeQuery:'New Hill Holleman Road Apex NC',
+    desc:'US-1 / New Hill Holleman Rd Interchange + Friendship Rd Improvements',
+    detail:'Interchange at US 1/New Hill Holleman Rd plus intersection improvements at Friendship Road. ROW 2026, Construction 2027. Affects New Hill submarket and data center corridor near Shearon Harris.',
+    status:'ROW Acquisition 2026', row_year:2026, const_year:2027, completion_year:2029,
+    cost:'N/A',
+    url:'https://www.apexnc.org/1847/NCDOT-Projects',
+    ncdot:'https://www.ncdot.gov/initiatives-policies/Transportation/stip/Pages/stip-projects-map.aspx'
+  },
+  // ── NC 55 / Apex ─────────────────────────────────────────────────────────
+  {
+    id:'U-2901BA', county:'Wake', route:'NC-55 at CSX Railroad, Apex',
+    geocodeQuery:'South Salem Street Apex NC',
+    desc:'NC-55 Widening + CSX Bridge — S Mason St to N of S Salem St, Apex',
+    detail:'Widen NC 55/Williams Street and replace CSX railroad bridge in Apex. Design ~30% complete. Public meeting Spring 2026, Land acquisition 2027-2028, Construction 2029-2031.',
+    status:'Design / ROW 2027', row_year:2027, const_year:2029, completion_year:2031,
+    cost:'(Part of U-2901)',
+    url:'https://www.apexnc.org/1847/NCDOT-Projects',
+    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=U-2901'
+  },
+  {
+    id:'U-2901B', county:'Wake', route:'NC-55 (Williams St), US-1 to Olive Chapel Rd',
+    geocodeQuery:'NC 55 Olive Chapel Road Apex NC',
+    desc:'NC-55 (Williams St) Widening — US 1 to Olive Chapel Road, Apex',
+    detail:'Widen NC 55 to multilane from US 1 to Olive Chapel Road. Public meeting Spring 2026, Land acquisition 2029-2030, Construction 2031-2033. Adjacent to Seagroves parcel on Lawson Lane.',
+    status:'Design / ROW 2029', row_year:2029, const_year:2031, completion_year:2033,
+    cost:'TBD',
+    url:'https://www.apexnc.org/1847/NCDOT-Projects',
+    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=U-2901'
+  },
+  {
+    id:'HL-0007', county:'Wake', route:'NC-55 / Technology Dr / E Williams St, Apex',
+    geocodeQuery:'East Williams Street Apex NC',
+    desc:'NC-55 / Technology Dr / E Williams St — Superstreet (RCI), Apex',
+    detail:'Convert intersection to superstreet (reduced conflict intersection), widen NC 55 to Sunset Lake Road. Contract award Oct 2026, Construction 2027-2029.',
+    status:'Bid Award Oct 2026', row_year:2025, const_year:2027, completion_year:2029,
+    cost:'N/A',
+    url:'https://publicinput.com/NC55-Technology-Williams',
+    ncdot:'https://www.apexnc.org/1847/NCDOT-Projects'
+  },
+  // ── Ten-Ten Road / Southern Wake ─────────────────────────────────────────
+  {
+    id:'U-5825B', county:'Wake', route:'US-1 / Ten-Ten Rd Interchange',
+    geocodeQuery:'Ten Ten Road US 1 Cary NC',
+    desc:'US-1 / Ten-Ten Road Interchange Reconstruction — New 4-Lane Bridge',
+    detail:'Reconstruct interchange at US-1/Ten Ten Road with new 4-lane bridge and pedestrian accommodations. ROW and Utilities 2027, Construction 2030.',
+    status:'Programmed / ROW 2027', row_year:2027, const_year:2030, completion_year:2033,
+    cost:'TBD',
+    url:'https://www.apexnc.org/1847/NCDOT-Projects',
+    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=U-5825'
+  },
+  {
+    id:'U-5825A/C', county:'Wake', route:'Ten-Ten Rd, Apex Peakway to Kildaire Farm Rd',
+    geocodeQuery:'Apex Peakway Apex NC',
+    desc:'Ten-Ten Road Widening — Apex Peakway to Kildaire Farm Rd (Unfunded Construction)',
+    detail:'U-5825A: Apex Peakway to west of US-1. U-5825C: Reliance Ave to Kildaire Farm Rd. Funded for preliminary engineering ONLY — construction NOT in current 10-year STIP.',
+    status:'Preliminary Engineering Only', row_year:null, const_year:null, completion_year:null,
+    cost:'TBD',
+    url:'https://www.apexnc.org/1847/NCDOT-Projects',
+    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=U-5825'
+  },
+  // ── RDU / Morrisville ─────────────────────────────────────────────────────
+  {
+    id:'U-6200', county:'Wake', route:'Aviation Pkwy (SR-1002), Morrisville/RDU',
+    geocodeQuery:'Aviation Parkway Morrisville NC',
+    desc:'Aviation Parkway Widening to 4-Lane Divided — RDU/RTP Corridor',
+    detail:'Widen Aviation Parkway near RDU Airport to 4-lane median-divided with bike/ped. ROW begins 2026, construction 2029. Affects RDU/RTP industrial and office corridor access.',
     status:'ROW Acquisition 2026', row_year:2026, const_year:2029, completion_year:2031,
-    cost:'$57.3M', lat:35.8850, lng:-78.7750,
+    cost:'$57.3M',
     url:'https://www.carync.gov/projects-initiatives/project-updates/street-projects/ncdot-local-projects',
     ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=U-6200'
   },
+  // ── I-40 Corridor ─────────────────────────────────────────────────────────
   {
-    id:'I-5887', county:'Wake', route:'I-40/I-440',
-    desc:'I-40 Widening — Wade Ave to I-440/US-64, Raleigh',
-    detail:'Add 2 general-purpose lanes each direction on I-40 from Wade Ave to I-440/US 64 (Exit 301). Key industrial/logistics corridor improvement for RTP and West Raleigh.',
+    id:'I-5887 (Wade-I440)', county:'Wake', route:'I-40, Wade Ave to I-440',
+    geocodeQuery:'Wade Avenue Raleigh NC', fallbackLat:35.8050, fallbackLng:-78.7200,
+    desc:'I-40 Widening — Wade Ave to I-440/US-64 (Exit 301), Raleigh',
+    detail:'Add 2 general-purpose lanes each direction on I-40 from Wade Ave to I-440/US 64. Key for RTP and West Raleigh industrial/logistics corridor.',
     status:'Programmed', row_year:2027, const_year:2029, completion_year:2033,
-    cost:'$210M', lat:35.8200, lng:-78.7400,
-    url:'https://connect.ncdot.gov/projects/planning/Pages/state-transportation-improvement-program.aspx',
+    cost:'$210M',
+    url:'https://www.ncdot.gov/initiatives-policies/Transportation/stip/Pages/stip-projects-map.aspx',
     ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=I-5887'
   },
   {
-    id:'I-5887B', county:'Wake/Johnston', route:'I-40',
-    desc:'I-40 Widening — I-440/US-64 to Johnston County Line',
-    detail:'Extend I-40 widening from Raleigh beltway east through Southeast Wake toward Johnston County. Critical for industrial development pressure in SE Wake/Clayton corridor.',
+    id:'I-5887 (I440-Johnston)', county:'Wake/Johnston', route:'I-40, I-440 to Johnston County Line',
+    geocodeQuery:'Thomas Bradshaw Freeway Garner NC',
+    desc:'I-40 Widening — I-440/US-64 (Exit 301) to Johnston County Line',
+    detail:'Extend I-40 widening from Raleigh beltway east through SE Wake toward Johnston County. Critical for industrial development in SE Wake/Clayton/Johnston corridor.',
     status:'Programmed', row_year:2028, const_year:2031, completion_year:2035,
-    cost:'$310M', lat:35.7700, lng:-78.5600,
-    url:'https://connect.ncdot.gov/projects/planning/Pages/state-transportation-improvement-program.aspx',
-    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=I-5887B'
+    cost:'$310M',
+    url:'https://www.ncdot.gov/initiatives-policies/Transportation/stip/Pages/stip-projects-map.aspx',
+    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=I-5887'
   },
+  // ── Durham / I-85 ─────────────────────────────────────────────────────────
   {
-    id:'U-5763', county:'Wake', route:'Ten-Ten Road',
-    desc:'Ten-Ten Road Widening — US 401 to Topans Drive, Fuquay-Varina',
-    detail:'Widen Ten-Ten Road to 2 eastbound lanes. Southern Wake corridor improvement for industrial and residential growth in Fuquay-Varina/Holly Springs submarket.',
-    status:'Programmed', row_year:2027, const_year:2029, completion_year:2032,
-    cost:'$28M', lat:35.6200, lng:-78.7200,
-    url:'https://connect.ncdot.gov/projects/planning/Pages/state-transportation-improvement-program.aspx',
-    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=U-5763'
-  },
-  {
-    id:'R-5721', county:'Wake', route:'I-40/NC-42',
-    desc:'I-40/NC-42 Interchange Improvements — Clayton Corridor',
-    detail:'Access improvements at I-40/NC-42 interchange (Exit 312). Directly catalyzes industrial development in Johnston County/Clayton submarket. Last-mile logistics and small-bay flex demand driver.',
-    status:'Programmed', row_year:2027, const_year:2030, completion_year:2033,
-    cost:'$45M', lat:35.6400, lng:-78.4600,
-    url:'https://connect.ncdot.gov/projects/planning/Pages/state-transportation-improvement-program.aspx',
-    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=R-5721'
-  },
-  {
-    id:'U-5526', county:'Durham', route:'NC-54',
-    desc:'NC-54 (Durham-Chapel Hill Blvd) Widening, Durham',
-    detail:'Widen NC-54 corridor in Durham. Affects South Durham office, research, and mixed-use corridors near RTP.',
-    status:'Design/Engineering', row_year:2027, const_year:2030, completion_year:2033,
-    cost:'$95M', lat:35.9600, lng:-78.9800,
-    url:'https://www.ncdot.gov/projects/Pages/default.aspx',
-    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=U-5526'
-  },
-  {
-    id:'U-5549', county:'Wake', route:'Wade Ave',
-    desc:'Wade Avenue Widening, Raleigh',
-    detail:'Widen Wade Ave — preliminary engineering funded, ROW and construction not yet funded. Key connector between I-40 and downtown Raleigh. Affects North Hills and West Raleigh office corridors.',
-    status:'Preliminary Engineering Only', row_year:null, const_year:null, completion_year:null,
-    cost:'$76.7M', lat:35.8080, lng:-78.7100,
-    url:'https://www.carync.gov/projects-initiatives/project-updates/street-projects/ncdot-local-projects',
-    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=U-5549'
-  },
-  {
-    id:'U-6001', county:'Wake', route:'NC-55/Apex',
-    desc:'NC-55 Widening — US 1 to Olive Chapel Road, Apex',
-    detail:'Widen NC-55 in Apex to multi-lane. Public meeting tentative Spring 2026. Adjacent to key Apex commercial and industrial corridors including the Seagroves area.',
-    status:'Planning/Public Meeting 2026', row_year:2028, const_year:2031, completion_year:2034,
-    cost:'$85M est.', lat:35.7350, lng:-78.8650,
-    url:'https://www.apexnc.org/1847/NCDOT-Projects',
-    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=U-6001'
-  },
-  {
-    id:'I-3306C', county:'Durham/Orange', route:'I-85',
-    desc:'I-85 Improvements — Orange County to Durham County',
-    detail:'Capacity and safety improvements on I-85 from Orange County line into Durham. Affects industrial and logistics development along the I-85 corridor north of Durham.',
+    id:'I-3306C', county:'Durham/Orange', route:'I-85, Orange County to Durham County',
+    geocodeQuery:'I-85 Hillsborough NC',
+    desc:'I-85 Capacity Improvements — Orange County Line to Durham County',
+    detail:'Capacity and safety improvements on I-85 approaching Durham from the west. Affects industrial and logistics along I-85 corridor north of Durham. Under construction.',
     status:'Under Construction', row_year:2022, const_year:2024, completion_year:2027,
-    cost:'$120M+', lat:36.0700, lng:-79.0100,
+    cost:'$120M+',
     url:'https://www.ncdot.gov/projects/Pages/default.aspx',
-    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=I-3306C'
+    ncdot:'https://apps.ncdot.gov/STIP/AllDivisions/TIPProjectDetail?TIPProjectId=I-3306'
   },
 ];
 
-function fetchDotLayer(){
-  setOverlayStatus('Loading NCDOT STIP 2026-2035...');
+// Cache geocoded DOT locations so they persist across toggles
+const dotGeoCache = {};
+
+async function geocodeDotProject(p) {
+  if(dotGeoCache[p.id]) return dotGeoCache[p.id];
+  try {
+    const q = encodeURIComponent(p.geocodeQuery + ', North Carolina, USA');
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=us`,
+      {headers:{'Accept-Language':'en','User-Agent':'SAS-TBJ-DealMap/1.0'}});
+    const d = await r.json();
+    if(d && d[0]) {
+      const lat = parseFloat(d[0].lat), lng = parseFloat(d[0].lon);
+      // Validate within Triangle bounding box
+      if(lat > 35.0 && lat < 36.8 && lng > -80.5 && lng < -77.5) {
+        dotGeoCache[p.id] = {lat, lng};
+        return {lat, lng};
+      }
+    }
+  } catch(e) { console.warn('DOT geocode failed:', p.id, e.message); }
+  return null;
+}
+
+async function fetchDotLayer(){
+  setOverlayStatus('Geocoding NCDOT projects...');
   const lg=L.layerGroup();
   const statusColor = {
+    'Complete / Open':'#2E7D32',
+    'Complete / Open Sept 2024':'#2E7D32',
     'Under Construction':'#E65100',
-    'Phase 2 Under Construction':'#E65100',
-    'ROW Acquisition':'#FF8C00',
     'ROW Acquisition 2026':'#FF8C00',
-    'Design/Engineering':'#FFC107',
-    'Programmed':'#FF8C00',
-    'Planning/Public Meeting 2026':'#FFD54F',
-    'Preliminary Engineering Only':'#BDBDBD',
+    'Design / ROW 2027':'#FFC107',
+    'Design / ROW 2029':'#FFC107',
+    'Design / Engineering':'#FFC107',
+    'Bid Award Oct 2026':'#FFC107',
+    'Programmed':'#1565C0',
+    'Programmed / ROW 2027':'#1565C0',
+    'Preliminary Engineering Only':'#9E9E9E',
   };
-  for(const p of STIP_PROJECTS){
+
+  let loaded = 0;
+  for(const p of STIP_PROJECTS) {
+    setOverlayStatus(`Geocoding ${loaded+1}/${STIP_PROJECTS.length}...`);
+    // Respect Nominatim 1 req/sec rate limit
+    await new Promise(res => setTimeout(res, 1100));
+    let geo = await geocodeDotProject(p);
+    if(!geo) {
+      // Use fallback coordinates if provided, otherwise skip
+      if(p.fallbackLat && p.fallbackLng) {
+        geo = {lat: p.fallbackLat, lng: p.fallbackLng};
+        console.log('Using fallback coords for:', p.id);
+      } else {
+        console.warn('Could not geocode DOT project (no fallback):', p.id, p.geocodeQuery);
+        continue;
+      }
+    }
     const color = statusColor[p.status] || '#FF8C00';
-    const m = L.marker([p.lat, p.lng], {icon: L.divIcon({className:'',
+    const m = L.marker([geo.lat, geo.lng], {icon: L.divIcon({className:'',
       html:`<div style="width:15px;height:15px;border:2.5px solid ${color};background:${color}33;border-radius:2px;box-shadow:0 1px 5px rgba(0,0,0,0.5)"></div>`,
       iconSize:[15,15],iconAnchor:[7,7],popupAnchor:[0,-10]})});
     const rowStr = p.row_year ? `ROW: ${p.row_year}` : 'ROW: TBD';
@@ -795,7 +917,7 @@ function fetchDotLayer(){
     m.bindPopup(
       `<span class="p-tag" style="background:${color};color:#fff">NCDOT ${p.id}</span>`+
       `<div class="p-title">${p.desc}</div>`+
-      `<div class="p-meta">${p.county} County · ${p.route}</div>`+
+      `<div class="p-meta">${p.county} County &middot; ${p.route}</div>`+
       `<div class="p-notes">${p.detail}</div>`+
       `<div class="p-meta" style="margin-top:4px"><strong>Status:</strong> ${p.status}</div>`+
       `<div class="p-meta">${rowStr} &nbsp;|&nbsp; ${constStr}${complStr?' &nbsp;|&nbsp; '+complStr:''}</div>`+
@@ -807,9 +929,10 @@ function fetchDotLayer(){
       `</div>`,
       {maxWidth:300});
     lg.addLayer(m);
+    loaded++;
   }
-  setOverlayStatus(`${STIP_PROJECTS.length} NCDOT STIP projects loaded`);
-  setTimeout(()=>setOverlayStatus(''),3000);
+  setOverlayStatus(`${loaded}/${STIP_PROJECTS.length} NCDOT projects mapped`);
+  setTimeout(()=>setOverlayStatus(''),4000);
   return lg;
 }
 
@@ -817,7 +940,7 @@ async function fetchPermitsLayer(){
   setOverlayStatus('Loading filed permits...');
   const lg=L.layerGroup();
   const where=encodeURIComponent("permitclassmapped='Non-Residential' AND latitude_perm IS NOT NULL");
-  const fields='permitnum,projectname,description,originaladdress1,originalcity,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,landusedescription';
+  const fields='permitnum,projectname,description,originaladdress1,originalcity,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,landusedescription,pin';
   const url=RALEIGH_BASE+`Building_Permits_Past_31_Days/FeatureServer/0/query?where=${where}&outFields=${fields}&f=json&resultRecordCount=500&orderByFields=issueddate+DESC`;
   const data=(await (await fetch(url,{signal:AbortSignal.timeout(10000)})).json());
   let count=0;
@@ -839,8 +962,8 @@ async function fetchPermitsLayer(){
       `<div class="p-meta">Issued ${issued} · ${a.statuscurrentmapped||''}</div>`+
       `<div class="p-source">${a.permitnum||''}</div>` +
       `<div style="margin-top:5px;display:flex;flex-direction:column;gap:3px">` +
-      (a.permitnum ? `<a class="p-link" href="https://raleighnc.gov/services/permits/check-permit-status?permit=${encodeURIComponent(a.permitnum)}" target="_blank" style="color:#1E88E5">&#128196; Check permit status &rarr;</a>` : '') +
-      `<a class="p-link" href="https://maps.raleighnc.gov/iMAPS/?address=${encodeURIComponent((a.originaladdress1||'')+', Raleigh, NC')}" target="_blank" style="color:#1E88E5">&#128205; View on iMAPS &rarr;</a>` +
+      (a.pin ? `<a class="p-link" href="https://maps.raleighnc.gov/iMAPS/?pin=${a.pin}" target="_blank" style="color:#1E88E5">&#128205; View parcel on iMAPS &rarr;</a>` : `<a class="p-link" href="https://maps.raleighnc.gov/iMAPS/" target="_blank" style="color:#1E88E5">&#128205; Raleigh iMAPS &rarr;</a>`) +
+      `<a class="p-link" href="https://data-ral.opendata.arcgis.com/datasets/raleigh::building-permits/explore?where=permitnum%20%3D%20'${encodeURIComponent(a.permitnum||'')}'" target="_blank" style="color:#1E88E5">&#128196; Permit record (open data) &rarr;</a>` +
       `</div>`,{maxWidth:280});
     lg.addLayer(m);count++;
   }
@@ -915,7 +1038,7 @@ async function toggleOverlay(type,btn){
   if(!overlayLoaded[type]){
     btn.disabled=true;btn.style.opacity='0.6';
     try{
-      if(type==='dot')overlayLayers[type]=fetchDotLayer();
+      if(type==='dot')overlayLayers[type]=await fetchDotLayer();
       else if(type==='permits')overlayLayers[type]=await fetchPermitsLayer();
       else if(type==='zoning')overlayLayers[type]=await fetchZoningLayer();
       overlayLoaded[type]=true;
