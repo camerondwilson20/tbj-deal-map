@@ -458,6 +458,95 @@ function startAutoRefresh(){
 }
 
 // ── Gmail Refresh ──────────────────────────────────────────────
+// ── TBJ Email Parsers ──────────────────────────────────────────────────────
+
+// Detect if email is from Rebecca Troyer (breaking news alert)
+function isTroyerAlert(email){
+  const from=email.headers?.From||'';
+  return from.includes('Rebecca Troyer');
+}
+
+// Extract headlines from TBJ plain-text email body
+// Two formats: (1) plain text "Headline
+Read full story >" and (2) "BREAKING Headline
+READ MORE"
+function extractTBJHeadlines(body, isTroyer){
+  const headlines=[];
+  const skip=['View in Browser','Quick Links','Digital Edition','Subscription Renewal',
+    'Change of Address','Unsubscribe','Manage Preferences','UPCOMING EVENTS','Triangle Business Journal',
+    'bizjournals.com','Download the free app','All rights reserved','Email sent by',
+    'Glenwood Avenue','Read full story','READ MORE','RELATED NEWS','BREAKING','SPONSORED',
+    'Sign up','SIGN UP','START YOUR FREE TRIAL','BizNotify','Jim Allen Group','Why Triangle',
+    'People and companies','Morning Edition','Afternoon Edition','people in the'];
+
+  if(isTroyer){
+    // Troyer format: "BREAKING Headline headline text
+READ MORE"
+    // Main story is right after "BREAKING" — pull from snippet/subject, also grab related
+    const lines=body.split(/
+|&#8202;/).map(l=>l.replace(/&#\d+;/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').trim()).filter(l=>l.length>15);
+    for(const line of lines){
+      if(skip.some(s=>line.includes(s)))continue;
+      if(line.startsWith('http')||line.startsWith('<'))continue;
+      // Troyer lines are concise headlines — filter to things that look like headlines
+      if(line.length>10&&line.length<200&&!line.includes('@')&&!line.includes('©'))
+        headlines.push({title:line,isBreaking:true});
+    }
+  } else {
+    // Digest format: stories separated by "Read full story >"
+    const chunks=body.split(/Read full story\s*>|READ MORE/i);
+    for(const chunk of chunks){
+      // Get the last meaningful line of each chunk — that's the headline
+      const lines=chunk.split(/
+|&#8202;/).map(l=>l.replace(/&#\d+;/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim()).filter(Boolean);
+      // Walk backwards to find a real headline (last non-skip line)
+      for(let i=lines.length-1;i>=0;i--){
+        const line=lines[i];
+        if(line.length<10||line.length>200)continue;
+        if(skip.some(s=>line.includes(s)))continue;
+        if(line.startsWith('http')||line.startsWith('<')||line.includes('@'))continue;
+        headlines.push({title:line,isBreaking:false});
+        break;
+      }
+    }
+  }
+  // Dedupe by first 60 chars
+  const seen=new Set();
+  return headlines.filter(h=>{
+    const k=h.title.toLowerCase().substring(0,60);
+    if(seen.has(k))return false;
+    seen.add(k);return true;
+  });
+}
+
+// Use Claude AI to filter CRE-relevant headlines and extract location/tag
+async function filterCREHeadlines(headlines, emailDate){
+  if(!headlines.length)return[];
+  const prompt=`You are a commercial real estate analyst in Raleigh-Durham, NC.
+From these TBJ headlines, identify which are relevant to CRE: real estate transactions, development, construction, leases, permits, zoning, land, industrial, office, retail, hospitality, data centers, infrastructure, major employers expanding/contracting (affects office/industrial demand).
+EXCLUDE: pure sports, politics, personal profiles, restaurant reviews, residential home sales, charity events, road accidents.
+
+For each RELEVANT headline return JSON array:
+[{"title":"exact headline","loc":"city or submarket in Triangle (Raleigh/Durham/Cary/Apex/etc) or null if regional","tag":"industrial|development|office|land|retail","notes":"1 sentence: what happened, key numbers, why CRE matters"}]
+
+Headlines:
+${headlines.slice(0,25).map((h,i)=>i+'. '+(h.isBreaking?'[BREAKING] ':'')+h.title).join('
+')}
+
+Return ONLY valid JSON array. If none are CRE-relevant, return [].`;
+
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+    });
+    const d=await r.json();
+    const text=d.content?.[0]?.text||'';
+    const clean=text.replace(/```json|```/g,'').trim();
+    return JSON.parse(clean)||[];
+  }catch(e){console.warn('AI filter failed',e.message);return[];}
+}
+
 async function refreshFeed(isAuto=false){
   const btn=document.getElementById('refresh-btn');
   const countEl=document.getElementById('story-count');
@@ -467,15 +556,18 @@ async function refreshFeed(isAuto=false){
     const searchResp=await fetch('https://gmail.mcp.claude.com/mcp',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({method:'tools/call',params:{name:'gmail_search_messages',
-        arguments:{q:'(from:mike@southatlanticsites.com subject:Fwd) OR (from:reply@news.bizjournals.com) newer_than:90d',maxResults:50}}})
+        arguments:{q:'from:reply@news.bizjournals.com newer_than:90d',maxResults:60}}})
     });
     if(!searchResp.ok)throw new Error('Gmail MCP unreachable');
     const searchData=await searchResp.json();
     const messages=searchData?.result?.messages||[];
     if(!messages.length){btn.disabled=false;btn.textContent='⟳ Refresh Feed';return;}
+
     const existing=new Set(allStories.map(s=>s.title.toLowerCase().substring(0,60)));
     let added=0;
-    for(const msg of messages.slice(0,20)){
+
+    // Process up to 15 emails per refresh to avoid timeout
+    for(const msg of messages.slice(0,15)){
       try{
         const msgResp=await fetch('https://gmail.mcp.claude.com/mcp',{
           method:'POST',headers:{'Content-Type':'application/json'},
@@ -485,59 +577,59 @@ async function refreshFeed(isAuto=false){
         if(!email)continue;
         const body=email.body||'';
         const dateIso=email.headers?.Date?new Date(email.headers.Date).toISOString().split('T')[0]:new Date().toISOString().split('T')[0];
-        function decodeTBJUrl(b64){
-          try{const padded=b64+'='.repeat((4-b64.length%4)%4);return atob(padded).split('?')[0];}catch(e){return null;}
-        }
-        const digestStories=[];
-        const lines=body.split('\n').map(l=>l.trim()).filter(Boolean);
-        for(let i=0;i<lines.length-1;i++){
-          const line=lines[i],nextLine=lines[i+1]||'';
-          const urlMatch=nextLine.match(/https?:\/\/link\.bizjournals\.com\/click\/[^/]+\/([A-Za-z0-9+/=_-]+)\//);
-          if(!urlMatch)continue;
-          const realUrl=decodeTBJUrl(urlMatch[1]);
-          if(!realUrl||!realUrl.includes('bizjournals.com/triangle/news/'))continue;
-          const skip=['Read full story','View in Browser','Quick Links','Unsubscribe','Manage Preferences','UPCOMING EVENTS','START YOUR FREE TRIAL'];
-          if(skip.some(s=>line.includes(s)))continue;
-          if(line.length<10||line.startsWith('<')||line.startsWith('http'))continue;
-          digestStories.push({title:line,link:realUrl});
-        }
-        if(!digestStories.length){
-          const subj=(email.headers?.Subject||'').replace(/^(Fwd?:\s*)+/i,'').trim();
-          if(subj){
-            const du=body.match(/https?:\/\/(?:www\.)?bizjournals\.com\/triangle\/news\/[^\s"<>)]+/);
-            digestStories.push({title:subj,link:du?du[0]:'https://www.bizjournals.com/triangle/news/commercial-real-estate'});
-          }
-        }
-        for(const ds of digestStories){
+        const isTroyer=isTroyerAlert(email);
+
+        // Extract all headlines from this email
+        const rawHeadlines=extractTBJHeadlines(body,isTroyer);
+        if(!rawHeadlines.length)continue;
+
+        // Filter to CRE-relevant using Claude AI
+        const creStories=await filterCREHeadlines(rawHeadlines,dateIso);
+        if(!creStories.length)continue;
+
+        for(const ds of creStories){
           const titleKey=ds.title.toLowerCase().substring(0,60);
           if(existing.has(titleKey))continue;
           existing.add(titleKey);
-          let detectedLoc=detectLoc(ds.title),storyAddress='',preciseLat=null,preciseLng=null;
-          if(ds.link&&ds.link.includes('bizjournals.com/triangle/news/')){
-            try{
-              const aiGeo=await aiGeocodeArticle(ds.title,ds.link,'');
-              if(aiGeo){
-                if(aiGeo.address)storyAddress=aiGeo.address;
-                if(aiGeo.loc&&!detectedLoc)detectedLoc=aiGeo.loc;
-                if(aiGeo.lat&&aiGeo.lng){preciseLat=aiGeo.lat;preciseLng=aiGeo.lng;}
-              }
-            }catch(e){}
-          }
+
+          // Geocode using AI
+          let detectedLoc=ds.loc||detectLoc(ds.title),storyAddress='',preciseLat=null,preciseLng=null;
+          try{
+            const aiGeo=await aiGeocodeArticle(ds.title,'',ds.notes||'');
+            if(aiGeo){
+              if(aiGeo.address)storyAddress=aiGeo.address;
+              if(aiGeo.loc&&!detectedLoc)detectedLoc=aiGeo.loc;
+              if(aiGeo.lat&&aiGeo.lng){preciseLat=aiGeo.lat;preciseLng=aiGeo.lng;}
+            }
+          }catch(e){}
+
+          // Build the story link — use bizjournals.com/triangle since no per-story URL in plain text
+          const link='https://www.bizjournals.com/triangle';
+          const isBreaking=rawHeadlines.find(h=>h.title.toLowerCase().includes(ds.title.toLowerCase().substring(0,40)))?.isBreaking||isTroyer;
+
           if(detectedLoc||preciseLat){
-            const story={title:ds.title.substring(0,160),link:ds.link,notes:'',
-              tag:detectTag(ds.title),loc:detectedLoc||'Triangle',date:dateIso,source:'gmail',manual:false,address:storyAddress};
+            const story={
+              title:(isBreaking?'🚨 ':'')+ds.title.substring(0,160),
+              link,notes:ds.notes||'',
+              tag:ds.tag||detectTag(ds.title),
+              loc:detectedLoc||'Triangle',
+              date:dateIso,source:'gmail',manual:false,address:storyAddress,
+              isTroyer:isTroyer
+            };
             if(preciseLat){story._lat=preciseLat;story._lng=preciseLng;story._precise=true;}
             allStories.unshift(story);added++;
           }else{
-            addNewsStory({title:ds.title.substring(0,160),link:ds.link,notes:'',tag:detectTag(ds.title),date:dateIso});
+            addNewsStory({title:(isBreaking?'🚨 ':'')+ds.title.substring(0,160),link,notes:ds.notes||'',tag:ds.tag||detectTag(ds.title),date:dateIso});
           }
         }
       }catch(e){console.warn('msg failed',msg.messageId||msg.id,e.message);}
     }
+
     btn.disabled=false;btn.textContent='⟳ Refresh Feed';
     lastCheckedAt=Date.now();updateLastChecked();
     renderAll();renderNews();updateNewsTabCount();
     countEl.textContent=getFiltered().length+' stories';
+    if(added>0)console.log(`TBJ feed: added ${added} new CRE stories`);
   }catch(e){
     console.error('Gmail feed error:',e);
     btn.disabled=false;btn.textContent='⟳ Refresh Feed';
@@ -1052,7 +1144,7 @@ async function fetchZoningLayer(){
       `<div style="margin-top:5px;display:flex;flex-direction:column;gap:3px">`+
       (a.IMAPS_Link?`<a class="p-link" href="${a.IMAPS_Link}" target="_blank" style="color:#8E24AA">&#128205; View parcel on iMAPS &rarr;</a>`:`<a class="p-link" href="https://maps.raleighnc.gov/iMAPS/" target="_blank" style="color:#8E24AA">&#128205; Raleigh iMAPS &rarr;</a>`)+
       (a.EG_Link?`<a class="p-link" href="${a.EG_Link}" target="_blank" style="color:#8E24AA">&#128196; Case documents &rarr;</a>`:'')+
-      `<a class="p-link" href="https://raleighnc.gov/planning/services/rezoning-cases" target="_blank" style="color:#8E24AA">&#128196; Raleigh rezoning portal &rarr;</a>`+
+      `<a class="p-link" href="https://engage.raleighnc.gov/rezoning" target="_blank" style="color:#8E24AA">&#128196; Active rezoning cases &rarr;</a>`+
       `</div>`;
     poly.bindPopup(popup,{maxWidth:260});
     try{const center=L.polygon(ll).getBounds().getCenter();const m=L.marker([center.lat,center.lng],{icon:makeZoningIcon()});m.bindPopup(popup,{maxWidth:260});lg.addLayer(m);}catch(e){}
@@ -1173,7 +1265,7 @@ async function runAreaIntel(){
     safeJson(wbase+`Parcels/MapServer/0/query?where=SALE_DATE+>+date+'${new Date(Date.now()-3*365*86400000).toISOString().slice(0,10)}'+AND+LAND_CODE+IN+('C','D','V','F')+AND+TOTSALPRICE+>+0${geom}&outFields=OWNER,SITE_ADDRESS,TOTSALPRICE,SALE_DATE,TOTAL_VALUE_ASSD,CALC_AREA,TYPE_USE_DECODE,LAND_CLASS_DECODE,PIN_NUM,REID&f=json&resultRecordCount=200&orderByFields=TOTSALPRICE+DESC&outSR=4326`),
     safeJson(rbase+`Building_Permits_Past_31_Days/FeatureServer/0/query?where=permitclassmapped%3D'Non-Residential'+AND+latitude_perm+IS+NOT+NULL+AND+(workclassmapped%3D'New'+OR+estprojectcost+>%3D+100000)${geom}&outFields=permitnum,projectname,description,originaladdress1,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,pin&f=json&resultRecordCount=50&orderByFields=estprojectcost+DESC&outSR=4326`),
     safeJson(rbase+`Building_Permits_Pending/FeatureServer/0/query?where=permitclassmapped%3D'Non-Residential'+AND+latitude_perm+IS+NOT+NULL+AND+(workclassmapped%3D'New'+OR+estprojectcost+>%3D+250000)+AND+applieddate+>%3D+timestamp+'2020-01-01+00:00:00'${geom}&outFields=permitnum,projectname,description,originaladdress1,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,applieddate,latitude_perm,longitude_perm,pin&f=json&resultRecordCount=100&orderByFields=estprojectcost+DESC&outSR=4326`),
-    safeJson(rbase+`Rezoning_Case_Boundaries_View/FeatureServer/0/query?where=StatusDate+>+timestamp+'2022-01-01+00:00:00'${geom}&outFields=ZONE_CASE,ZON_REQ,STATUS,Acres,PrevZoning,StatusDate,CurrentInfoLink,IMAPS_Link&f=json&resultRecordCount=30&outSR=4326`),
+    safeJson(rbase+`Rezoning_Case_Boundaries_View/FeatureServer/0/query?where=StatusDate+>+timestamp+'2022-01-01+00:00:00'${geom}&outFields=ZONE_CASE,ZON_REQ,STATUS,Acres,PrevZoning,StatusDate,CurrentInfoLink,IMAPS_Link,EG_Link&f=json&resultRecordCount=30&outSR=4326`),
     safeJson(rbase+`Development_Plans/FeatureServer/0/query?where=status+IN+('Review+In+Progress','Pending','Filed','Submitted')${geom}&outFields=plan_name,plan_number,plan_type,status,major_street,developer,acreage,submitted&f=json&resultRecordCount=20&outSR=4326`),
     safeJson(`https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query?geometry=${bbox}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE,ZONE_SUBTY&f=json&resultRecordCount=20`),
   ]);
@@ -1228,7 +1320,9 @@ async function runAreaIntel(){
     const psfNote=a.TOTSALPRICE&&a.CALC_AREA&&a.CALC_AREA>0?` (${fmtPrice(Math.round(a.TOTSALPRICE/(a.CALC_AREA*43560)))}/SF)`:'';
     const acres=a.CALC_AREA?a.CALC_AREA.toFixed(2)+' ac':'';
     const saleDate=fmtDateTs(a.SALE_DATE);
-    const taxUrl=a.REID?`https://services.wake.gov/TaxPortal/Property/SearchByReid?reid=${a.REID.replace(/^0+/,'')}`:null;
+    const reidNum=a.REID?a.REID.replace(/^0+/,''):null;
+    const taxUrl=reidNum?`https://services.wake.gov/realestate/Account.asp?id=${a.REID}`:null;
+    const deedUrl=reidNum?`https://services.wake.gov/realestate/Deeds.asp?id=${a.REID}`:null;
     const iUrl=a.PIN_NUM?`https://maps.raleighnc.gov/iMAPS/?pin=${a.PIN_NUM}`:'https://maps.raleighnc.gov/iMAPS/';
     const m=L.marker([pinLat,pinLng],{icon:L.divIcon({className:'intel-sale-pin',
       html:`<div style="width:12px;height:12px;background:#C9A84C;border:2px solid white;border-radius:2px;transform:rotate(45deg);box-shadow:0 1px 5px rgba(0,0,0,0.5)"></div>`,
@@ -1240,6 +1334,7 @@ async function runAreaIntel(){
       `<div class="p-meta">Owner: ${a.OWNER||'—'}</div>`+
       `<div style="margin-top:4px;display:flex;flex-direction:column;gap:2px">`+
       (taxUrl?`<a class="p-link" href="${taxUrl}" target="_blank">&#127968; Wake Co. Property Record →</a>`:'')+
+      (deedUrl?`<a class="p-link" href="${deedUrl}" target="_blank">&#128196; Deed / Ownership History →</a>`:'')+
       `<a class="p-link" href="${iUrl}" target="_blank">&#128205; View on iMAPS →</a>`+
       `</div>`,
       {maxWidth:260});
@@ -1314,14 +1409,16 @@ async function runAreaIntel(){
     const acres=a.CALC_AREA?a.CALC_AREA.toFixed(2)+' ac':'';
     const useType=a.TYPE_USE_DECODE||a.LAND_CLASS_DECODE||'';
     const assessed=fmtPrice(a.TOTAL_VALUE_ASSD);
-    const taxUrl=a.REID?`https://services.wake.gov/TaxPortal/Property/SearchByReid?reid=${a.REID.replace(/^0+/,'')}`:null;
+    const reidNum=a.REID?a.REID.replace(/^0+/,''):null;
+    const taxUrl=a.REID?`https://services.wake.gov/realestate/Account.asp?id=${a.REID}`:null;
+    const deedUrl=a.REID?`https://services.wake.gov/realestate/Deeds.asp?id=${a.REID}`:null;
     const iUrl=a.PIN_NUM?`https://maps.raleighnc.gov/iMAPS/?pin=${a.PIN_NUM}`:'https://maps.raleighnc.gov/iMAPS/';
     const psfNote = (a.TOTSALPRICE && a.CALC_AREA && a.CALC_AREA>0) ? ' ('+fmtPrice(Math.round(a.TOTSALPRICE/(a.CALC_AREA*43560)))+'/SF)' : '';
     return `<div class="intel-item">
       <strong>${a.SITE_ADDRESS||'Unknown Address'}</strong> ${price?`— ${price}${psfNote}`:'— Price N/A'}
       <span class="intel-meta">${[saleDate,acres,useType,assessed?'Assessed: '+assessed:''].filter(Boolean).join(' · ')}</span>
       <span class="intel-meta">Owner: ${a.OWNER||'—'}</span>
-      <span class="intel-meta">${[taxUrl?`<a href="${taxUrl}" target="_blank">Wake Co. Record →</a>`:'', `<a href="${iUrl}" target="_blank">iMAPS →</a>`].join(' · ')}</span>
+      <span class="intel-meta">${[taxUrl?`<a href="${taxUrl}" target="_blank">&#127968; Property Record →</a>`:'', deedUrl?`<a href="${deedUrl}" target="_blank">&#128196; Deed History →</a>`:'', `<a href="${iUrl}" target="_blank">&#128205; iMAPS →</a>`].filter(Boolean).join(' · ')}</span>
     </div>`;
   });
   html+=makeSection('💰 Recent Sales (3yr, Wake Co. — Commercial/Industrial/Vacant)', '#1565C0', saleItems, 'No recorded sales in radius in past 2 years.');
@@ -1363,10 +1460,11 @@ async function runAreaIntel(){
       a.STATUS==='Withdrawn'||a.STATUS==='Denied'?`<span class="intel-badge" style="background:#f5f5f5;color:#999">${a.STATUS}</span>`:
       `<span class="intel-badge flag-yellow">${a.STATUS||'Pending'}</span>`;
     const iUrl=a.IMAPS_Link||'https://maps.raleighnc.gov/iMAPS/';
+    const caseUrl=a.EG_Link||a.CurrentInfoLink||null;
     return `<div class="intel-item">
       ${statusBadge}<strong>${a.ZONE_CASE||''}</strong> → <strong>${a.ZON_REQ||''}</strong>
       <span class="intel-meta">${[acres,a.PrevZoning?'From: '+a.PrevZoning:'',sDate].filter(Boolean).join(' · ')}</span>
-      <span class="intel-meta"><a href="${iUrl}" target="_blank">iMAPS →</a>${a.CurrentInfoLink?` · <a href="${a.CurrentInfoLink}" target="_blank">Case details →</a>`:''}</span>
+      <span class="intel-meta">${[`<a href="${iUrl}" target="_blank">&#128205; iMAPS →</a>`, caseUrl?`<a href="${caseUrl}" target="_blank">&#128196; Case details →</a>`:`<a href="https://engage.raleighnc.gov/rezoning" target="_blank">&#128196; Rezoning portal →</a>`].join(' · ')}</span>
     </div>`;
   });
   html+=makeSection('📋 Rezoning Cases (Since 2022)', '#8E24AA', zoningItems, 'No rezoning cases in this radius since 2022.');
