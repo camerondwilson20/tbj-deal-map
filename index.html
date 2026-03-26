@@ -467,7 +467,7 @@ async function refreshFeed(isAuto=false){
     const searchResp=await fetch('https://gmail.mcp.claude.com/mcp',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({method:'tools/call',params:{name:'gmail_search_messages',
-        arguments:{q:'(from:mike@southatlanticsites.com subject:Fwd) OR (from:reply@news.bizjournals.com) newer_than:60d',maxResults:30}}})
+        arguments:{q:'(from:mike@southatlanticsites.com subject:Fwd) OR (from:reply@news.bizjournals.com) newer_than:90d',maxResults:50}}})
     });
     if(!searchResp.ok)throw new Error('Gmail MCP unreachable');
     const searchData=await searchResp.json();
@@ -479,7 +479,7 @@ async function refreshFeed(isAuto=false){
       try{
         const msgResp=await fetch('https://gmail.mcp.claude.com/mcp',{
           method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({method:'tools/call',params:{name:'gmail_read_message',arguments:{messageId:msg.id}}})
+          body:JSON.stringify({method:'tools/call',params:{name:'gmail_read_message',arguments:{messageId:msg.messageId||msg.id}}})
         });
         const email=(await msgResp.json())?.result;
         if(!email)continue;
@@ -532,7 +532,7 @@ async function refreshFeed(isAuto=false){
             addNewsStory({title:ds.title.substring(0,160),link:ds.link,notes:'',tag:detectTag(ds.title),date:dateIso});
           }
         }
-      }catch(e){console.warn('msg failed',msg.id,e.message);}
+      }catch(e){console.warn('msg failed',msg.messageId||msg.id,e.message);}
     }
     btn.disabled=false;btn.textContent='⟳ Refresh Feed';
     lastCheckedAt=Date.now();updateLastChecked();
@@ -1017,7 +1017,6 @@ async function fetchPermitsLayer(){
       `<div class="p-source">${a.permitnum||''}</div>` +
       `<div style="margin-top:5px;display:flex;flex-direction:column;gap:3px">` +
       (a.pin ? `<a class="p-link" href="https://maps.raleighnc.gov/iMAPS/?pin=${a.pin}" target="_blank" style="color:#1E88E5">&#128205; View parcel on iMAPS &rarr;</a>` : `<a class="p-link" href="https://maps.raleighnc.gov/iMAPS/" target="_blank" style="color:#1E88E5">&#128205; Raleigh iMAPS &rarr;</a>`) +
-      `<a class="p-link" href="https://data-ral.opendata.arcgis.com/datasets/raleigh::building-permits/explore?where=permitnum%20%3D%20'${encodeURIComponent(a.permitnum||'')}'" target="_blank" style="color:#1E88E5">&#128196; Permit record (open data) &rarr;</a>` +
       `</div>`,{maxWidth:280});
     lg.addLayer(m);count++;
   }
@@ -1171,7 +1170,7 @@ async function runAreaIntel(){
 
   // Parallel fetch all sources
   const [salesData,permitsIssuedData,permitsPendingData,zoningData,devPlansData,femaData] = await Promise.all([
-    safeJson(wbase+`Parcels/MapServer/0/query?where=SALE_DATE+>+date+'${new Date(Date.now()-3*365*86400000).toISOString().slice(0,10)}'+AND+LAND_CODE+IN+('C','D','V','F')+AND+TOTSALPRICE+>+0${geom}&outFields=OWNER,SITE_ADDRESS,TOTSALPRICE,SALE_DATE,TOTAL_VALUE_ASSD,CALC_AREA,TYPE_USE_DECODE,LAND_CLASS_DECODE,PIN_NUM&f=json&resultRecordCount=200&orderByFields=TOTSALPRICE+DESC&outSR=4326`),
+    safeJson(wbase+`Parcels/MapServer/0/query?where=SALE_DATE+>+date+'${new Date(Date.now()-3*365*86400000).toISOString().slice(0,10)}'+AND+LAND_CODE+IN+('C','D','V','F')+AND+TOTSALPRICE+>+0${geom}&outFields=OWNER,SITE_ADDRESS,TOTSALPRICE,SALE_DATE,TOTAL_VALUE_ASSD,CALC_AREA,TYPE_USE_DECODE,LAND_CLASS_DECODE,PIN_NUM,REID&f=json&resultRecordCount=200&orderByFields=TOTSALPRICE+DESC&outSR=4326`),
     safeJson(rbase+`Building_Permits_Past_31_Days/FeatureServer/0/query?where=permitclassmapped%3D'Non-Residential'+AND+latitude_perm+IS+NOT+NULL+AND+(workclassmapped%3D'New'+OR+estprojectcost+>%3D+100000)${geom}&outFields=permitnum,projectname,description,originaladdress1,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,pin&f=json&resultRecordCount=50&orderByFields=estprojectcost+DESC&outSR=4326`),
     safeJson(rbase+`Building_Permits_Pending/FeatureServer/0/query?where=permitclassmapped%3D'Non-Residential'+AND+latitude_perm+IS+NOT+NULL+AND+(workclassmapped%3D'New'+OR+estprojectcost+>%3D+250000)+AND+applieddate+>%3D+timestamp+'2020-01-01+00:00:00'${geom}&outFields=permitnum,projectname,description,originaladdress1,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,applieddate,latitude_perm,longitude_perm,pin&f=json&resultRecordCount=100&orderByFields=estprojectcost+DESC&outSR=4326`),
     safeJson(rbase+`Rezoning_Case_Boundaries_View/FeatureServer/0/query?where=StatusDate+>+timestamp+'2022-01-01+00:00:00'${geom}&outFields=ZONE_CASE,ZON_REQ,STATUS,Acres,PrevZoning,StatusDate,CurrentInfoLink,IMAPS_Link&f=json&resultRecordCount=30&outSR=4326`),
@@ -1229,6 +1228,7 @@ async function runAreaIntel(){
     const psfNote=a.TOTSALPRICE&&a.CALC_AREA&&a.CALC_AREA>0?` (${fmtPrice(Math.round(a.TOTSALPRICE/(a.CALC_AREA*43560)))}/SF)`:'';
     const acres=a.CALC_AREA?a.CALC_AREA.toFixed(2)+' ac':'';
     const saleDate=fmtDateTs(a.SALE_DATE);
+    const taxUrl=a.REID?`https://services.wake.gov/TaxPortal/Property/SearchByReid?reid=${a.REID.replace(/^0+/,'')}`:null;
     const iUrl=a.PIN_NUM?`https://maps.raleighnc.gov/iMAPS/?pin=${a.PIN_NUM}`:'https://maps.raleighnc.gov/iMAPS/';
     const m=L.marker([pinLat,pinLng],{icon:L.divIcon({className:'intel-sale-pin',
       html:`<div style="width:12px;height:12px;background:#C9A84C;border:2px solid white;border-radius:2px;transform:rotate(45deg);box-shadow:0 1px 5px rgba(0,0,0,0.5)"></div>`,
@@ -1238,8 +1238,11 @@ async function runAreaIntel(){
       `<div class="p-title">${a.SITE_ADDRESS||'Unknown'}</div>`+
       `<div class="p-meta">${[price+psfNote,saleDate,acres,a.TYPE_USE_DECODE||a.LAND_CLASS_DECODE].filter(Boolean).join(' · ')}</div>`+
       `<div class="p-meta">Owner: ${a.OWNER||'—'}</div>`+
-      `<a class="p-link" href="${iUrl}" target="_blank">View on iMAPS →</a>`,
-      {maxWidth:240});
+      `<div style="margin-top:4px;display:flex;flex-direction:column;gap:2px">`+
+      (taxUrl?`<a class="p-link" href="${taxUrl}" target="_blank">&#127968; Wake Co. Property Record →</a>`:'')+
+      `<a class="p-link" href="${iUrl}" target="_blank">&#128205; View on iMAPS →</a>`+
+      `</div>`,
+      {maxWidth:260});
     m.addTo(map);
     intelSalePins.push(m);
   }
@@ -1311,12 +1314,14 @@ async function runAreaIntel(){
     const acres=a.CALC_AREA?a.CALC_AREA.toFixed(2)+' ac':'';
     const useType=a.TYPE_USE_DECODE||a.LAND_CLASS_DECODE||'';
     const assessed=fmtPrice(a.TOTAL_VALUE_ASSD);
+    const taxUrl=a.REID?`https://services.wake.gov/TaxPortal/Property/SearchByReid?reid=${a.REID.replace(/^0+/,'')}`:null;
     const iUrl=a.PIN_NUM?`https://maps.raleighnc.gov/iMAPS/?pin=${a.PIN_NUM}`:'https://maps.raleighnc.gov/iMAPS/';
-    const psfNote = (price && acres && parseFloat(acres)>0) ? ' ('+fmtPrice(a.TOTSALPRICE/(parseFloat(acres)*43560))+'/SF)' : '';
+    const psfNote = (a.TOTSALPRICE && a.CALC_AREA && a.CALC_AREA>0) ? ' ('+fmtPrice(Math.round(a.TOTSALPRICE/(a.CALC_AREA*43560)))+'/SF)' : '';
     return `<div class="intel-item">
       <strong>${a.SITE_ADDRESS||'Unknown Address'}</strong> ${price?`— ${price}${psfNote}`:'— Price N/A'}
       <span class="intel-meta">${[saleDate,acres,useType,assessed?'Assessed: '+assessed:''].filter(Boolean).join(' · ')}</span>
-      <span class="intel-meta">Owner: ${a.OWNER||'—'} · <a href="${iUrl}" target="_blank">iMAPS →</a></span>
+      <span class="intel-meta">Owner: ${a.OWNER||'—'}</span>
+      <span class="intel-meta">${[taxUrl?`<a href="${taxUrl}" target="_blank">Wake Co. Record →</a>`:'', `<a href="${iUrl}" target="_blank">iMAPS →</a>`].join(' · ')}</span>
     </div>`;
   });
   html+=makeSection('💰 Recent Sales (3yr, Wake Co. — Commercial/Industrial/Vacant)', '#1565C0', saleItems, 'No recorded sales in radius in past 2 years.');
@@ -1331,14 +1336,13 @@ async function runAreaIntel(){
     const sqft=a.totalsqft?`${a.totalsqft.toLocaleString()} SF`:'';
     const dateStr=type==='issued'?'Issued: '+fmtDateTs(a.issueddate):'Applied: '+fmtDateTs(a.applieddate);
     const iUrl=a.pin?`https://maps.raleighnc.gov/iMAPS/?pin=${a.pin}`:'';
-    const dUrl=a.permitnum?`https://data-ral.opendata.arcgis.com/datasets/raleigh::building-permits/explore?where=permitnum%20%3D%20'${encodeURIComponent(a.permitnum)}'`:'';
-    const badge=type==='issued'
+        const badge=type==='issued'
       ?`<span class="intel-badge flag-blue">Issued</span>`
       :`<span class="intel-badge flag-yellow">In Review</span>`;
     return `<div class="intel-item">
       ${badge}<strong>${a.projectname||a.description||'Building Permit'}</strong>
       <span class="intel-meta">${a.originaladdress1||''} · ${[a.workclassmapped,sqft,cost,dateStr].filter(Boolean).join(' · ')}</span>
-      <span class="intel-meta">${a.permitnum||''} ${iUrl?`· <a href="${iUrl}" target="_blank">iMAPS →</a>`:''}${dUrl?` · <a href="${dUrl}" target="_blank">Record →</a>`:''}</span>
+      <span class="intel-meta">${a.permitnum||''}${iUrl?` · <a href="${iUrl}" target="_blank">&#128205; iMAPS →</a>`:''}</span>
     </div>`;
   };
 
