@@ -460,57 +460,44 @@ function startAutoRefresh(){
 // ── Gmail Refresh ──────────────────────────────────────────────
 // ── TBJ Email Parsers ──────────────────────────────────────────────────────
 
-// Detect if email is from Rebecca Troyer (breaking news alert)
 function isTroyerAlert(email){
-  const from=email.headers?.From||'';
-  return from.includes('Rebecca Troyer');
+  return (email.headers&&email.headers.From||'').includes('Rebecca Troyer');
 }
 
-// Extract headlines from TBJ plain-text email body
-// Two formats: (1) plain text "Headline
-Read full story >" and (2) "BREAKING Headline
-READ MORE"
-function extractTBJHeadlines(body, isTroyer){
-  const headlines=[];
+function extractTBJHeadlines(body,isTroyer){
   const skip=['View in Browser','Quick Links','Digital Edition','Subscription Renewal',
-    'Change of Address','Unsubscribe','Manage Preferences','UPCOMING EVENTS','Triangle Business Journal',
-    'bizjournals.com','Download the free app','All rights reserved','Email sent by',
-    'Glenwood Avenue','Read full story','READ MORE','RELATED NEWS','BREAKING','SPONSORED',
-    'Sign up','SIGN UP','START YOUR FREE TRIAL','BizNotify','Jim Allen Group','Why Triangle',
-    'People and companies','Morning Edition','Afternoon Edition','people in the'];
-
+    'Change of Address','Unsubscribe','Manage Preferences','UPCOMING EVENTS',
+    'Triangle Business Journal','bizjournals.com','Download the free app',
+    'All rights reserved','Email sent by','Glenwood Avenue','Read full story',
+    'READ MORE','RELATED NEWS','BREAKING','SPONSORED','Sign up','SIGN UP',
+    'START YOUR FREE TRIAL','BizNotify','Jim Allen Group','Morning Edition',
+    'Afternoon Edition','People and companies'];
+  function dec(s){
+    return s.replace(/&#\d+;/g,'').replace(/&amp;/g,'&')
+            .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').trim();
+  }
+  const headlines=[];
   if(isTroyer){
-    // Troyer format: "BREAKING Headline headline text
-READ MORE"
-    // Main story is right after "BREAKING" — pull from snippet/subject, also grab related
-    const lines=body.split(/
-|&#8202;/).map(l=>l.replace(/&#\d+;/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').trim()).filter(l=>l.length>15);
+    const lines=body.split(/\n|&#8202;/).map(dec).filter(l=>l.length>10);
     for(const line of lines){
       if(skip.some(s=>line.includes(s)))continue;
-      if(line.startsWith('http')||line.startsWith('<'))continue;
-      // Troyer lines are concise headlines — filter to things that look like headlines
-      if(line.length>10&&line.length<200&&!line.includes('@')&&!line.includes('©'))
-        headlines.push({title:line,isBreaking:true});
+      if(line.startsWith('http')||line.startsWith('<')||line.includes('@'))continue;
+      if(line.length>10&&line.length<200) headlines.push({title:line,isBreaking:true});
     }
   } else {
-    // Digest format: stories separated by "Read full story >"
     const chunks=body.split(/Read full story\s*>|READ MORE/i);
     for(const chunk of chunks){
-      // Get the last meaningful line of each chunk — that's the headline
-      const lines=chunk.split(/
-|&#8202;/).map(l=>l.replace(/&#\d+;/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim()).filter(Boolean);
-      // Walk backwards to find a real headline (last non-skip line)
-      for(let i=lines.length-1;i>=0;i--){
-        const line=lines[i];
-        if(line.length<10||line.length>200)continue;
-        if(skip.some(s=>line.includes(s)))continue;
-        if(line.startsWith('http')||line.startsWith('<')||line.includes('@'))continue;
-        headlines.push({title:line,isBreaking:false});
+      const clines=chunk.split(/\n|&#8202;/).map(dec).filter(Boolean);
+      for(let j=clines.length-1;j>=0;j--){
+        const cl=clines[j];
+        if(cl.length<10||cl.length>200)continue;
+        if(skip.some(s=>cl.includes(s)))continue;
+        if(cl.startsWith('http')||cl.startsWith('<')||cl.includes('@'))continue;
+        headlines.push({title:cl,isBreaking:false});
         break;
       }
     }
   }
-  // Dedupe by first 60 chars
   const seen=new Set();
   return headlines.filter(h=>{
     const k=h.title.toLowerCase().substring(0,60);
@@ -519,31 +506,31 @@ READ MORE"
   });
 }
 
-// Use Claude AI to filter CRE-relevant headlines and extract location/tag
-async function filterCREHeadlines(headlines, emailDate){
+async function filterCREHeadlines(headlines){
   if(!headlines.length)return[];
-  const prompt=`You are a commercial real estate analyst in Raleigh-Durham, NC.
-From these TBJ headlines, identify which are relevant to CRE: real estate transactions, development, construction, leases, permits, zoning, land, industrial, office, retail, hospitality, data centers, infrastructure, major employers expanding/contracting (affects office/industrial demand).
-EXCLUDE: pure sports, politics, personal profiles, restaurant reviews, residential home sales, charity events, road accidents.
-
-For each RELEVANT headline return JSON array:
-[{"title":"exact headline","loc":"city or submarket in Triangle (Raleigh/Durham/Cary/Apex/etc) or null if regional","tag":"industrial|development|office|land|retail","notes":"1 sentence: what happened, key numbers, why CRE matters"}]
-
-Headlines:
-${headlines.slice(0,25).map((h,i)=>i+'. '+(h.isBreaking?'[BREAKING] ':'')+h.title).join('
-')}
-
-Return ONLY valid JSON array. If none are CRE-relevant, return [].`;
-
+  const list=headlines.slice(0,25).map((h,i)=>
+    i+'. '+(h.isBreaking?'[BREAKING] ':'')+h.title
+  ).join('\n');
+  const prompt='You are a CRE analyst in Raleigh-Durham NC.\n'
+    +'From these TBJ headlines identify ones relevant to CRE: transactions, development, '
+    +'construction, leases, permits, zoning, land, industrial, office, retail, hospitality, '
+    +'data centers, infrastructure, major employer expansions/contractions.\n'
+    +'EXCLUDE: pure sports, politics, personal profiles, restaurant reviews, '
+    +'residential home sales, charity, road accidents.\n\n'
+    +'For each RELEVANT headline return JSON:\n'
+    +'[{"title":"exact headline","loc":"Triangle city or null",'
+    +'"tag":"industrial|development|office|land|retail",'
+    +'"notes":"1 sentence: what happened, key numbers, CRE impact"}]\n\n'
+    +'Headlines:\n'+list+'\n\nReturn ONLY valid JSON array. If none relevant return [].';
   try{
     const r=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+        messages:[{role:'user',content:prompt}]})
     });
     const d=await r.json();
-    const text=d.content?.[0]?.text||'';
-    const clean=text.replace(/```json|```/g,'').trim();
-    return JSON.parse(clean)||[];
+    const text=(d.content&&d.content[0]&&d.content[0].text)||'';
+    return JSON.parse(text.replace(/```json|```/g,'').trim())||[];
   }catch(e){console.warn('AI filter failed',e.message);return[];}
 }
 
@@ -551,7 +538,7 @@ async function refreshFeed(isAuto=false){
   const btn=document.getElementById('refresh-btn');
   const countEl=document.getElementById('story-count');
   btn.disabled=true;
-  btn.textContent=isAuto?'⟳ Auto-checking...':'Checking Gmail...';
+  btn.textContent=isAuto?'\u27f3 Auto-checking...':'Checking Gmail...';
   try{
     const searchResp=await fetch('https://gmail.mcp.claude.com/mcp',{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -559,32 +546,31 @@ async function refreshFeed(isAuto=false){
         arguments:{q:'from:reply@news.bizjournals.com newer_than:90d',maxResults:60}}})
     });
     if(!searchResp.ok)throw new Error('Gmail MCP unreachable');
-    const searchData=await searchResp.json();
-    const messages=searchData?.result?.messages||[];
-    if(!messages.length){btn.disabled=false;btn.textContent='⟳ Refresh Feed';return;}
+    const messages=(await searchResp.json())?.result?.messages||[];
+    if(!messages.length){btn.disabled=false;btn.textContent='\u27f3 Refresh Feed';return;}
 
     const existing=new Set(allStories.map(s=>s.title.toLowerCase().substring(0,60)));
     let added=0;
 
-    // Process up to 15 emails per refresh to avoid timeout
     for(const msg of messages.slice(0,15)){
       try{
         const msgResp=await fetch('https://gmail.mcp.claude.com/mcp',{
           method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({method:'tools/call',params:{name:'gmail_read_message',arguments:{messageId:msg.messageId||msg.id}}})
+          body:JSON.stringify({method:'tools/call',params:{name:'gmail_read_message',
+            arguments:{messageId:msg.messageId||msg.id}}})
         });
         const email=(await msgResp.json())?.result;
         if(!email)continue;
         const body=email.body||'';
-        const dateIso=email.headers?.Date?new Date(email.headers.Date).toISOString().split('T')[0]:new Date().toISOString().split('T')[0];
+        const dateIso=email.headers?.Date
+          ?new Date(email.headers.Date).toISOString().split('T')[0]
+          :new Date().toISOString().split('T')[0];
         const isTroyer=isTroyerAlert(email);
 
-        // Extract all headlines from this email
         const rawHeadlines=extractTBJHeadlines(body,isTroyer);
         if(!rawHeadlines.length)continue;
 
-        // Filter to CRE-relevant using Claude AI
-        const creStories=await filterCREHeadlines(rawHeadlines,dateIso);
+        const creStories=await filterCREHeadlines(rawHeadlines);
         if(!creStories.length)continue;
 
         for(const ds of creStories){
@@ -592,7 +578,6 @@ async function refreshFeed(isAuto=false){
           if(existing.has(titleKey))continue;
           existing.add(titleKey);
 
-          // Geocode using AI
           let detectedLoc=ds.loc||detectLoc(ds.title),storyAddress='',preciseLat=null,preciseLng=null;
           try{
             const aiGeo=await aiGeocodeArticle(ds.title,'',ds.notes||'');
@@ -603,196 +588,37 @@ async function refreshFeed(isAuto=false){
             }
           }catch(e){}
 
-          // Build the story link — use bizjournals.com/triangle since no per-story URL in plain text
+          const rawMatch=rawHeadlines.find(h=>
+            h.title.toLowerCase().includes(ds.title.toLowerCase().substring(0,40)));
+          const isBreaking=!!(rawMatch&&rawMatch.isBreaking)||isTroyer;
           const link='https://www.bizjournals.com/triangle';
-          const isBreaking=rawHeadlines.find(h=>h.title.toLowerCase().includes(ds.title.toLowerCase().substring(0,40)))?.isBreaking||isTroyer;
+          const dispTitle=(isBreaking?'\U0001f6a8 ':'')+ds.title.substring(0,160);
 
           if(detectedLoc||preciseLat){
-            const story={
-              title:(isBreaking?'🚨 ':'')+ds.title.substring(0,160),
-              link,notes:ds.notes||'',
-              tag:ds.tag||detectTag(ds.title),
-              loc:detectedLoc||'Triangle',
-              date:dateIso,source:'gmail',manual:false,address:storyAddress,
-              isTroyer:isTroyer
-            };
+            const story={title:dispTitle,link,notes:ds.notes||'',
+              tag:ds.tag||detectTag(ds.title),loc:detectedLoc||'Triangle',
+              date:dateIso,source:'gmail',manual:false,address:storyAddress};
             if(preciseLat){story._lat=preciseLat;story._lng=preciseLng;story._precise=true;}
             allStories.unshift(story);added++;
           }else{
-            addNewsStory({title:(isBreaking?'🚨 ':'')+ds.title.substring(0,160),link,notes:ds.notes||'',tag:ds.tag||detectTag(ds.title),date:dateIso});
+            addNewsStory({title:dispTitle,link,notes:ds.notes||'',
+              tag:ds.tag||detectTag(ds.title),date:dateIso});
           }
         }
       }catch(e){console.warn('msg failed',msg.messageId||msg.id,e.message);}
     }
 
-    btn.disabled=false;btn.textContent='⟳ Refresh Feed';
+    btn.disabled=false;btn.textContent='\u27f3 Refresh Feed';
     lastCheckedAt=Date.now();updateLastChecked();
     renderAll();renderNews();updateNewsTabCount();
     countEl.textContent=getFiltered().length+' stories';
-    if(added>0)console.log(`TBJ feed: added ${added} new CRE stories`);
+    if(added>0)console.log('TBJ feed: added '+added+' new CRE stories');
   }catch(e){
     console.error('Gmail feed error:',e);
-    btn.disabled=false;btn.textContent='⟳ Refresh Feed';
+    btn.disabled=false;btn.textContent='\u27f3 Refresh Feed';
     lastCheckedAt=Date.now();updateLastChecked();
   }
 }
-
-// ── AI Extraction ──────────────────────────────────────────────
-async function runExtract(){
-  const text=document.getElementById('in-text').value.trim();
-  const btn=document.getElementById('ai-btn');
-  const status=document.getElementById('ai-status');
-  if(!text){status.textContent='Paste article text first.';status.style.color='var(--red)';return;}
-  btn.disabled=true;btn.textContent='Extracting...';
-  status.textContent='Calling Claude...';status.style.color='var(--navy-mid)';
-  const locList=PLACES.map(p=>p.name).join(', ');
-  const prompt=`Extract CRE deal info from this TBJ article. Return ONLY valid JSON, no markdown.
-{
-  "title":"concise deal headline, max 120 chars",
-  "url":"bizjournals.com article URL if present, else empty string",
-  "location":"best match from: ${locList}",
-  "address":"street address if mentioned (e.g. '123 Main St, Cary'), else empty string",
-  "tag":"one of: industrial, development, office, land, retail",
-  "notes":"key facts: SF or acres, price, tenant/buyer/seller — 1-2 sentences",
-  "date":"YYYY-MM-DD if found, else today ${new Date().toISOString().slice(0,10)}"
-}
-Article: ${text.substring(0,4000)}`;
-  try{
-    const resp=await fetch(ANTHROPIC_API,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:prompt}]})});
-    const data=await resp.json();
-    const p=JSON.parse((data.content?.[0]?.text||'').replace(/```json|```/g,'').trim());
-    if(p.title)document.getElementById('in-title').value=p.title;
-    if(p.url)document.getElementById('in-url').value=p.url;
-    if(p.notes)document.getElementById('in-notes').value=p.notes;
-    if(p.date)document.getElementById('ai-btn').dataset.date=p.date;
-    if(p.address){document.getElementById('ai-btn').dataset.address=p.address;document.getElementById('in-address').value=p.address;}
-    if(p.location){const sel=document.getElementById('in-loc');const opt=Array.from(sel.options).find(o=>o.value===p.location);if(opt)sel.value=p.location;}
-    if(p.tag){const sel=document.getElementById('in-tag');const opt=Array.from(sel.options).find(o=>o.value===p.tag);if(opt)sel.value=p.tag;}
-    status.textContent='Done — review then hit Pin to Map.';status.style.color='var(--green)';
-    btn.textContent='⚡ Extract & Auto-Fill';btn.disabled=false;
-  }catch(e){
-    status.textContent='Extract failed: '+e.message;status.style.color='var(--red)';
-    btn.textContent='⚡ Extract & Auto-Fill';btn.disabled=false;
-  }
-}
-
-// ── Add Story ──────────────────────────────────────────────────
-async function addStory(){
-  const title=document.getElementById('in-title').value.trim();
-  const url=document.getElementById('in-url').value.trim();
-  const loc=document.getElementById('in-loc').value;
-  const tag=document.getElementById('in-tag').value;
-  const notes=document.getElementById('in-notes').value.trim();
-  const date=document.getElementById('ai-btn').dataset.date||new Date().toISOString().slice(0,10);
-  const address=document.getElementById('in-address').value.trim()||document.getElementById('ai-btn').dataset.address||'';
-  const msg=document.getElementById('add-msg');
-  if(!title){msg.textContent='Headline required.';msg.style.color='var(--red)';return;}
-  const story={title,link:url||'https://www.bizjournals.com/triangle/news/commercial-real-estate',
-    notes,tag,loc,date,address,source:'manual',manual:true,_id:Date.now()};
-  if(address){
-    msg.textContent='Geocoding address...';msg.style.color='var(--navy-mid)';
-    const geo=await geocodeAddress(address);
-    if(geo&&geo.lat>35.2&&geo.lat<36.6&&geo.lng>-80.0&&geo.lng<-77.8){
-      story._lat=geo.lat;story._lng=geo.lng;story._precise=true;
-    }
-  }
-  allStories.unshift(story);
-  const pins=loadPins();pins.unshift(story);savePins(pins);
-  msg.textContent=story._precise?'📍 Pinned to exact address!':'Pinned!';
-  msg.style.color='var(--green)';
-  ['in-title','in-url','in-notes','in-text','in-address'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('ai-status').textContent='';
-  delete document.getElementById('ai-btn').dataset.date;
-  delete document.getElementById('ai-btn').dataset.address;
-  setTimeout(()=>{msg.textContent='';},2500);
-  document.querySelector('.stab[data-tab="stories"]').click();
-  renderAll();
-}
-
-// ── Render ─────────────────────────────────────────────────────
-function getFiltered(){
-  let s=allStories;
-  if(activeFilter!=='all')s=s.filter(x=>x.tag===activeFilter);
-  if(activeDays!=='all'){const cut=Date.now()-parseInt(activeDays)*86400000;s=s.filter(x=>x.manual||dateMs(x.date)>cut);}
-  return s;
-}
-function renderAll(){
-  activeMarkers.forEach(m=>map.removeLayer(m));activeMarkers=[];
-  const panel=document.getElementById('story-panel');
-  panel.querySelectorAll('.story-card').forEach(c=>c.remove());
-  const filtered=getFiltered();
-  document.getElementById('story-count').textContent=filtered.length+' stories';
-  document.querySelector('.stab[data-tab="stories"]').textContent='Feed ('+filtered.length+')';
-  const emptyMsg=document.getElementById('empty-msg');
-  if(emptyMsg)emptyMsg.style.display=filtered.length===0?'block':'none';
-  filtered.forEach(story=>{
-    const tagKey=story.manual?'manual':story.tag;
-    const tagStyle=TAG_CSS[tagKey]||TAG_CSS.office;
-    const place=findPlace(story.loc);
-    const sourceLabel=story.source==='gmail'?'via TBJ Newsletter':story.source==='manual'?'manually pinned':'seed data';
-    const card=document.createElement('div');
-    card.className='story-card';
-    card.innerHTML=
-      `<span class="stag" style="${tagStyle}">${story.manual?'pinned':story.tag}</span>`+
-      `<div class="stitle">${story.title}</div>`+
-      `<div class="smeta">${story.loc||'Triangle'} &middot; ${fmtDate(story.date)}</div>`+
-      (story._precise?`<div class="geo-exact">📍 ${story.address}</div>`:'')+
-      (story.notes?`<div class="snotes">${story.notes}</div>`:'')+
-      (story.link?`<a class="slink" href="${story.link}" target="_blank">Read on TBJ &rarr;</a>`:'')+
-      `<div class="ssource">${sourceLabel}</div>`;
-    if(place||story._lat){
-      if(!story._lat){story._lat=jitter(place.lat);story._lng=jitter(place.lng);}
-      const precise=story._precise===true;
-      const m=L.marker([story._lat,story._lng],{icon:makeIcon(story.tag,story.manual,precise)}).addTo(map);
-      const geoLabel=precise?`<div class="geo-exact">📍 ${story.address||'exact address'}</div>`:`<div class="geo-approx">◎ ${story.loc||'Triangle'} area</div>`;
-      m.bindPopup(
-        `<span class="p-tag" style="${tagStyle}">${story.manual?'pinned':story.tag}</span>`+
-        `<div class="p-title">${story.title}</div>`+
-        `<div class="p-meta">${fmtDate(story.date)}</div>`+geoLabel+
-        (story.notes?`<div class="p-notes">${story.notes}</div>`:'')+
-        (story.link?`<a class="p-link" href="${story.link}" target="_blank">Read full story on TBJ &rarr;</a>`:'')+
-        `<div class="p-source">${sourceLabel}</div>`,{maxWidth:260});
-      m.on('click',()=>{panel.querySelectorAll('.story-card').forEach(c=>c.classList.remove('hl'));card.classList.add('hl');card.scrollIntoView({behavior:'smooth',block:'nearest'});});
-      card.addEventListener('click',()=>{panel.querySelectorAll('.story-card').forEach(c=>c.classList.remove('hl'));card.classList.add('hl');map.setView([story._lat,story._lng],13,{animate:true});m.openPopup();});
-      activeMarkers.push(m);
-    }else if(!story._lat){card.style.opacity='0.55';card.title='No Triangle location detected';}
-    panel.appendChild(card);
-  });
-}
-
-// ── Map ────────────────────────────────────────────────────────
-function initMap(){
-  map=L.map('map');
-  map.setView([35.82,-78.80],10);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:19
-  }).addTo(map);
-}
-
-// ── Overlay Engine ─────────────────────────────────────────────
-const overlayLayers={dot:null,permits:null,zoning:null};
-const overlayActive={dot:false,permits:false,zoning:false};
-const overlayLoaded={dot:false,permits:false,zoning:false};
-
-function setOverlayStatus(msg){const el=document.getElementById('overlay-status');if(el)el.textContent=msg;}
-
-function makeDotIcon(){
-  return L.divIcon({className:'',
-    html:`<div style="width:13px;height:13px;border:2.5px solid #FF8C00;background:rgba(255,140,0,0.18);border-radius:2px;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
-    iconSize:[13,13],iconAnchor:[6,6],popupAnchor:[0,-10]});
-}
-function makePermitIcon(){
-  return L.divIcon({className:'',
-    html:`<div style="width:11px;height:11px;background:#1E88E5;border:2px solid white;border-radius:2px;transform:rotate(45deg);box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
-    iconSize:[13,13],iconAnchor:[6,6],popupAnchor:[0,-10]});
-}
-function makeZoningIcon(){
-  return L.divIcon({className:'',
-    html:`<div style="width:12px;height:12px;background:#8E24AA;border:2.5px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
-    iconSize:[13,13],iconAnchor:[6,6],popupAnchor:[0,-10]});
-}
-
 // ── Curated NCDOT STIP 2026-2035 Triangle Projects ────────────
 // Source: NCDOT 2026-2035 STIP (FHWA approved Dec 2025) + CAMPO/TWTPO TIP
 // Covers Wake, Durham, Orange, Johnston, Chatham, Franklin counties
