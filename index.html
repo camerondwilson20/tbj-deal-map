@@ -1331,6 +1331,15 @@ async function runAreaIntel(){
 }
 
 // ── Boot ───────────────────────────────────────────────────────
+function initMap(){
+  map=L.map('map');
+  map.setView([35.82,-78.80],10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom:19
+  }).addTo(map);
+}
+
 function boot(){
   initMap();
   const locSel=document.getElementById('in-loc');
