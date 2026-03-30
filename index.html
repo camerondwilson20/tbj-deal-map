@@ -570,7 +570,20 @@ async function refreshFeed(isAuto=false){
         const rawHeadlines=extractTBJHeadlines(body,isTroyer);
         if(!rawHeadlines.length)continue;
 
-        const creStories=await filterCREHeadlines(rawHeadlines);
+        let creStories=await filterCREHeadlines(rawHeadlines);
+        // Fallback: if AI filter fails or returns nothing, use keyword matching
+        if(!creStories.length){
+          creStories=rawHeadlines.filter(h=>{
+            const t=h.title.toLowerCase();
+            return ['sq ft','office','industrial','warehouse','lease','sale','sold','develop',
+              'build','construction','permit','zoning','rezone','data center','retail','hotel',
+              'apartment','mixed use','land','acres','tower','hub','campus','facility',
+              'contractor','manufacturer','distribution','flex','rtp','project','site',
+              'plans','buys','opens','expands','moves','hires','jobs','plans gain',
+              'rises','space','park','center','opens','purchases','acquires','relocat',
+              'downtown','corridor','campus','bookstore','coffee','restaurant'].some(k=>t.includes(k));
+          }).map(h=>({title:h.title,loc:detectLoc(h.title),tag:detectTag(h.title),notes:''}));
+        }
         if(!creStories.length)continue;
 
         for(const ds of creStories){
