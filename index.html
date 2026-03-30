@@ -997,6 +997,367 @@ async function fetchZoningLayer(){
   return lg;
 }
 
+const WAKE_BASE='https://maps.wakegov.com/arcgis/rest/services/Property/';
+
+function setOverlayStatus(msg) {
+  const el = document.getElementById('overlay-status');
+  if(el) el.textContent = msg;
+}
+
+
+function makeDotIcon() {
+  // Orange square outline — DOT project marker
+  return L.divIcon({ className: '',
+    html: `<div style="width:13px;height:13px;border:2.5px solid #FF8C00;background:rgba(255,140,0,0.18);border-radius:2px;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
+    iconSize:[13,13], iconAnchor:[6,6], popupAnchor:[0,-10] });
+}
+
+function makePermitIcon() {
+  // Blue diamond
+  return L.divIcon({ className: '',
+    html: `<div style="width:11px;height:11px;background:#1E88E5;border:2px solid white;border-radius:2px;transform:rotate(45deg);box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
+    iconSize:[13,13], iconAnchor:[6,6], popupAnchor:[0,-10] });
+}
+
+function makeZoningIcon() {
+  // Purple pentagon-ish — use circle with different border
+  return L.divIcon({ className: '',
+    html: `<div style="width:12px;height:12px;background:#8E24AA;border:2.5px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
+    iconSize:[13,13], iconAnchor:[6,6], popupAnchor:[0,-10] });
+}
+
+
+function isCRE(text){
+  const t=(text||'').toLowerCase();
+  return CRE_KW.some(k=>t.includes(k));
+}
+
+function extractTBJLink(text){
+  // Nitter expands t.co links — look for bizjournals URL
+  const m=text.match(/https?:\/\/(?:www\.)?bizjournals\.com\/triangle\/[^\s"<>]+/);
+  if(m)return m[0];
+  // fallback: any t.co or bit.ly link
+  const m2=text.match(/https?:\/\/(?:t\.co|bit\.ly)\/[^\s"<>]+/);
+  return m2?m2[0]:'https://www.bizjournals.com/triangle/news/commercial-real-estate';
+}
+
+
+async function fetchNitterFeed(instance){
+  const url=`${instance}/${TBJ_HANDLE}/rss`;
+  const proxyUrl=CORS_PROXY+encodeURIComponent(url);
+  const resp=await fetch(proxyUrl,{signal:AbortSignal.timeout(8000)});
+  const data=await resp.json();
+  const xml=new DOMParser().parseFromString(data.contents||'','text/xml');
+  const items=xml.querySelectorAll('item');
+  if(!items.length)throw new Error('No items');
+  return Array.from(items).map(item=>{
+    const title=(item.querySelector('title')?.textContent||'').trim();
+    const desc=(item.querySelector('description')?.textContent||'').replace(/<[^>]+>/g,'').trim();
+    const pubDate=(item.querySelector('pubDate')?.textContent||'').trim();
+    const fullText=title+' '+desc;
+    let dateIso='';
+    try{dateIso=new Date(pubDate).toISOString();}catch(e){}
+    return{title,desc,fullText,dateIso,link:extractTBJLink(fullText)};
+  });
+}
+
+
+async function extractAddress(title, notes) {
+  const text = (title + ' ' + (notes||'')).substring(0, 500);
+  // Quick regex pass first — look for common address patterns
+  const addrMatch = text.match(/\d{2,5}\s+[A-Z][a-zA-Z\s]{3,40}(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Boulevard|Blvd|Way|Lane|Ln|Court|Ct|Highway|Hwy|Pike|Parkway|Pkwy)[,.\s]/);
+  if(addrMatch) return addrMatch[0].trim().replace(/[,.]$/, '');
+  return null;
+}
+
+
+async function queueGeocode(story) {
+  return new Promise((resolve) => {
+    geocodeQueue.push({ story, resolve });
+    if(!geocodeRunning) drainGeocodeQueue();
+  });
+}
+
+function renderAll(){
+  activeMarkers.forEach(m=>map.removeLayer(m));
+  activeMarkers=[];
+  const panel=document.getElementById('story-panel');
+  // keep empty-msg if present, clear cards
+  const cards=panel.querySelectorAll('.story-card');
+  cards.forEach(c=>c.remove());
+
+  const filtered=getFiltered();
+  document.getElementById('story-count').textContent=filtered.length+' stories';
+  document.querySelector('.stab[data-tab="stories"]').textContent='Feed ('+filtered.length+')';
+
+  // Show/hide static empty-msg
+  const emptyMsg = document.getElementById('empty-msg');
+  if(emptyMsg) emptyMsg.style.display = filtered.length===0 ? 'block' : 'none';
+
+  filtered.forEach(story=>{
+    const tagKey=story.manual?'manual':story.tag;
+    const tagStyle=TAG_CSS[tagKey]||TAG_CSS.office;
+    const place=findPlace(story.loc);
+    const sourceLabel=story.source==='gmail'?'via TBJ Newsletter':story.source==='twitter'?'via @TriangleBIZJrnl':story.source==='manual'?'manually pinned':'seed data';
+
+    const card=document.createElement('div');
+    card.className='story-card';
+    card.innerHTML=
+      `<span class="stag" style="${tagStyle}">${story.manual?'pinned':story.tag}</span>`+
+      `<div class="stitle">${story.title}</div>`+
+      `<div class="smeta">${story.loc||'Triangle'} &middot; ${fmtDate(story.date)}</div>`+
+      (story._precise ? `<div class="geo-exact">📍 ${story.address}</div>` : '')+
+      (story.notes?`<div class="snotes">${story.notes}</div>`:'')+
+      (story.link?`<a class="slink" href="${story.link}" target="_blank">Read on TBJ &rarr;</a>`:'')+
+      `<div class="ssource">${sourceLabel}</div>`;
+
+    if(place || story._lat){
+      if(!story._lat){story._lat=jitter(place.lat);story._lng=jitter(place.lng);}
+      const precise = story._precise === true;
+      const m=L.marker([story._lat,story._lng],{icon:makeIcon(story.tag,story.manual,precise)}).addTo(map);
+      const geoLabel = precise
+        ? `<div class="geo-exact">📍 ${story.address||'exact address'}</div>`
+        : `<div class="geo-approx">◎ ${story.loc||'Triangle'} area</div>`;
+      m.bindPopup(
+        `<span class="p-tag" style="${tagStyle}">${story.manual?'pinned':story.tag}</span>`+
+        `<div class="p-title">${story.title}</div>`+
+        `<div class="p-meta">${fmtDate(story.date)}</div>`+
+        geoLabel+
+        (story.notes?`<div class="p-notes">${story.notes}</div>`:'')+
+        (story.link?`<a class="p-link" href="${story.link}" target="_blank">Read full story on TBJ &rarr;</a>`:'')+
+        `<div class="p-source">${sourceLabel}</div>`,
+        {maxWidth:260}
+      );
+      m.on('click',()=>{
+        panel.querySelectorAll('.story-card').forEach(c=>c.classList.remove('hl'));
+        card.classList.add('hl');
+        card.scrollIntoView({behavior:'smooth',block:'nearest'});
+      });
+      card.addEventListener('click',()=>{
+        panel.querySelectorAll('.story-card').forEach(c=>c.classList.remove('hl'));
+        card.classList.add('hl');
+        map.setView([story._lat,story._lng],13,{animate:true});
+        m.openPopup();
+      });
+      activeMarkers.push(m);
+    }else if(!story._lat){
+      card.style.opacity='0.55';
+      card.title='No Triangle location detected';
+    }
+    panel.appendChild(card);
+  });
+}
+
+
+function getFiltered(){
+  let s=allStories;
+  if(activeFilter!=='all')s=s.filter(x=>x.tag===activeFilter);
+  if(activeDays!=='all'){
+    const cut=Date.now()-parseInt(activeDays)*86400000;
+    s=s.filter(x=>x.manual||dateMs(x.date)>cut);
+  }
+  return s;
+}
+
+
+async function addStory(){
+  const title=document.getElementById('in-title').value.trim();
+  const url=document.getElementById('in-url').value.trim();
+  const loc=document.getElementById('in-loc').value;
+  const tag=document.getElementById('in-tag').value;
+  const notes=document.getElementById('in-notes').value.trim();
+  const date=document.getElementById('ai-btn').dataset.date||new Date().toISOString().slice(0,10);
+  const address=document.getElementById('in-address').value.trim()||document.getElementById('ai-btn').dataset.address||'';
+  const msg=document.getElementById('add-msg');
+  if(!title){msg.textContent='Headline required.';msg.style.color='var(--red)';return;}
+
+  const story={title,link:url||'https://www.bizjournals.com/triangle/news/commercial-real-estate',
+    notes,tag,loc,date,address,source:'manual',manual:true,_id:Date.now()};
+
+  // Try to geocode to exact address
+  if(address) {
+    msg.textContent='Geocoding address...';msg.style.color='var(--navy-mid)';
+    const geo = await geocodeAddress(address);
+    if(geo && geo.lat > 35.2 && geo.lat < 36.6 && geo.lng > -80.0 && geo.lng < -77.8) {
+      story._lat = geo.lat;
+      story._lng = geo.lng;
+      story._precise = true;
+    }
+  }
+
+  allStories.unshift(story);
+  const pins=loadPins();pins.unshift(story);savePins(pins);
+
+  msg.textContent = story._precise ? '📍 Pinned to exact address!' : 'Pinned!';
+  msg.style.color='var(--green)';
+  ['in-title','in-url','in-notes','in-text','in-address'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ai-status').textContent='';
+  delete document.getElementById('ai-btn').dataset.date;
+  delete document.getElementById('ai-btn').dataset.address;
+  setTimeout(()=>{msg.textContent='';},2500);
+  document.querySelector('.stab[data-tab="stories"]').click();
+  renderAll();
+}
+
+
+async function runExtract(){
+  const text=document.getElementById('in-text').value.trim();
+  const btn=document.getElementById('ai-btn');
+  const status=document.getElementById('ai-status');
+  if(!text){status.textContent='Paste article text first.';status.style.color='var(--red)';return;}
+
+  btn.disabled=true;btn.textContent='Extracting...';
+  status.textContent='Calling Claude...';status.style.color='var(--navy-mid)';
+
+  const locList=PLACES.map(p=>p.name).join(', ');
+  const prompt=`Extract CRE deal info from this Triangle Business Journal article. Return ONLY valid JSON, no markdown.
+
+{
+  "title": "concise deal headline, max 120 chars",
+  "url": "the bizjournals.com article URL if present in text, else empty string",
+  "location": "best match from: ${locList}",
+  "address": "street address if mentioned (e.g. '123 Main St, Cary'), else empty string",
+  "tag": "one of: industrial, development, office, land, retail",
+  "notes": "key facts: SF or acres, price or $/SF, tenant/buyer/seller, address if mentioned — 1-2 sentences",
+  "date": "YYYY-MM-DD if found, else today ${new Date().toISOString().slice(0,10)}"
+}
+
+Article:
+${text.substring(0,4000)}`;
+
+  try{
+    const resp=await fetch(ANTHROPIC_API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,
+        messages:[{role:'user',content:prompt}]})
+    });
+    const data=await resp.json();
+    const raw=(data.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
+    const p=JSON.parse(raw);
+    if(p.title)document.getElementById('in-title').value=p.title;
+    if(p.url)document.getElementById('in-url').value=p.url;
+    if(p.notes)document.getElementById('in-notes').value=p.notes;
+    if(p.date)document.getElementById('ai-btn').dataset.date=p.date;
+    if(p.address){document.getElementById('ai-btn').dataset.address=p.address;document.getElementById('in-address').value=p.address;}
+    if(p.location){
+      const sel=document.getElementById('in-loc');
+      const opt=Array.from(sel.options).find(o=>o.value===p.location);
+      if(opt)sel.value=p.location;
+    }
+    if(p.tag){
+      const sel=document.getElementById('in-tag');
+      const opt=Array.from(sel.options).find(o=>o.value===p.tag);
+      if(opt)sel.value=p.tag;
+    }
+    status.textContent='Done — review then hit Pin to Map.';status.style.color='var(--green)';
+    btn.textContent='⚡ Extract & Auto-Fill';btn.disabled=false;
+  }catch(e){
+    status.textContent='Extract failed: '+e.message;status.style.color='var(--red)';
+    btn.textContent='⚡ Extract & Auto-Fill';btn.disabled=false;
+  }
+}
+
+
+        function decodeTBJUrl(b64) {
+          try {
+            const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+            const decoded = atob(padded);
+            return decoded.split('?')[0]; // strip UTM params
+          } catch(e) { return null; }
+        }
+
+
+
+async function drainGeocodeQueue() {
+  geocodeRunning = true;
+  while(geocodeQueue.length) {
+    const { story, resolve } = geocodeQueue.shift();
+    const addr = await extractAddress(story.title, story.notes);
+    if(addr) {
+      const geo = await geocodeAddress(addr);
+      if(geo) {
+        // Validate it's within Triangle bounding box (rough check)
+        if(geo.lat > 35.2 && geo.lat < 36.6 && geo.lng > -80.0 && geo.lng < -77.8) {
+          resolve({ lat: geo.lat, lng: geo.lng, precise: true, addressUsed: addr });
+          await new Promise(r => setTimeout(r, 1100)); // Nominatim rate limit
+          continue;
+        }
+      }
+    }
+    resolve(null); // fallback to submarket centroid
+  }
+  geocodeRunning = false;
+}
+
+// ── AI Article Geocoder ───────────────────────────────────────
+// Uses Claude to extract address from article text, then Nominatim to resolve coords
+async function aiGeocodeArticle(title, url, existingNotes) {
+  const cacheKey = url || title.substring(0,60);
+  if(aiGeoCache[cacheKey]) return aiGeoCache[cacheKey];
+
+  try {
+    // Fetch article text via allorigins CORS proxy
+    let articleText = title + ' ' + existingNotes;
+    if(url && url.includes('bizjournals.com')) {
+      try {
+        const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+        const resp = await fetch(proxyUrl, {signal: AbortSignal.timeout(8000)});
+        const data = await resp.json();
+        if(data.contents) {
+          // Strip HTML tags, get plain text
+          const tmp = document.createElement('div');
+          tmp.innerHTML = data.contents;
+          articleText = (tmp.innerText || tmp.textContent || '').substring(0, 3000);
+        }
+      } catch(e) { /* proxy failed, use title only */ }
+    }
+
+    // Ask Claude to extract address and location
+    const locList = PLACES.map(p=>p.name).join(', ');
+    const prompt = `From this Triangle Business Journal article text, extract:
+1. Street address of the property (e.g. "800 CentreGreen Way, Cary" or "1548 E Williams St, Apex") — only if explicitly mentioned
+2. Best submarket match from: ${locList}
+
+Return ONLY valid JSON: {"address": "full street address or empty string", "loc": "submarket name"}
+
+Article title: ${title}
+Article text: ${articleText.substring(0, 2000)}`;
+
+    const resp = await fetch(ANTHROPIC_API, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 150,
+        messages: [{role: 'user', content: prompt}]
+      })
+    });
+    const data = await resp.json();
+    const raw = (data.content?.[0]?.text || '').replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(raw);
+
+    let result = { address: parsed.address||'', loc: parsed.loc||'' };
+
+    // If address found, geocode it
+    if(result.address) {
+      const geo = await geocodeAddress(result.address);
+      if(geo && geo.lat > 35.2 && geo.lat < 36.6 && geo.lng > -80.0 && geo.lng < -77.8) {
+        result.lat = geo.lat;
+        result.lng = geo.lng;
+      }
+    }
+
+    aiGeoCache[cacheKey] = result;
+    return result;
+  } catch(e) {
+    console.warn('aiGeocodeArticle failed:', e.message);
+    return null;
+  }
+}
+
+// ── Auto-Refresh Engine ────────────────────────────────────────
+
 async function toggleOverlay(type,btn){
   if(overlayActive[type]){
     if(overlayLayers[type])map.removeLayer(overlayLayers[type]);
