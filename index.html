@@ -22,6 +22,8 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);height:100vh;overflow:hidden}
 #app{display:flex;flex-direction:column;height:100vh;background:var(--surface)}
+
+/* topbar */
 #topbar{display:flex;align-items:center;gap:8px;padding:0 14px;height:50px;background:var(--navy);border-bottom:2px solid var(--gold);flex-shrink:0;flex-wrap:wrap}
 #logo{font-size:12px;font-weight:600;color:#fff;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;margin-right:4px}
 #logo span{color:var(--gold)}
@@ -37,24 +39,34 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
 @keyframes pulse-gold{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0.5)}50%{box-shadow:0 0 0 5px rgba(201,168,76,0)}}
 #last-checked{font-size:10px;color:rgba(255,255,255,0.35);font-family:'DM Mono',monospace;white-space:nowrap}
 #story-count{font-size:11px;color:rgba(255,255,255,0.4);margin-left:auto;font-family:'DM Mono',monospace;white-space:nowrap}
+/* geocode badge */
 .geo-exact{font-size:9px;color:#2e7d32;font-family:'DM Mono',monospace;margin-top:2px}
 .geo-approx{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
+
+/* overlay toggles */
 #overlay-bar{display:flex;align-items:center;gap:6px;padding:5px 14px;background:#0a1c30;border-bottom:1px solid rgba(201,168,76,0.2);flex-shrink:0;flex-wrap:wrap}
 #overlay-label{font-size:10px;color:rgba(255,255,255,0.4);font-family:'DM Mono',monospace;white-space:nowrap;margin-right:2px;text-transform:uppercase;letter-spacing:0.06em}
 .ovl-btn{font-size:10px;padding:2px 10px;border-radius:12px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:rgba(255,255,255,0.5);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.12s;white-space:nowrap;display:flex;align-items:center;gap:5px}
 .ovl-btn:hover{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8)}
+.ovl-btn.active{color:#fff;border-color:currentColor}
 .ovl-btn.active.dot{background:rgba(255,140,0,0.15);color:#FF8C00;border-color:#FF8C00}
 .ovl-btn.active.permits{background:rgba(30,136,229,0.15);color:#1E88E5;border-color:#1E88E5}
 .ovl-btn.active.zoning{background:rgba(142,36,170,0.15);color:#8E24AA;border-color:#8E24AA}
 .ovl-btn .ovl-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
-#overlay-status{font-size:10px;color:rgba(255,255,255,0.4);font-family:'DM Mono',monospace;margin-left:auto}
+#overlay-status{font-size:10px;color:rgba(255,255,255,0.3);font-family:'DM Mono',monospace;margin-left:auto}
+
+/* main */
 #main{display:flex;flex:1;overflow:hidden}
 #map{flex:1;height:100%}
+
+/* sidebar */
 #sidebar{width:310px;display:flex;flex-direction:column;background:var(--white);border-left:1px solid var(--border);overflow:hidden}
 #sidebar-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)}
 .stab{flex:1;padding:10px 4px;text-align:center;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;font-family:'DM Sans',sans-serif;letter-spacing:0.03em;transition:all 0.12s}
 .stab:hover{color:var(--navy)}
 .stab.active{color:var(--navy);border-bottom-color:var(--gold)}
+
+/* story list */
 #story-panel{flex:1;overflow-y:auto}
 .story-card{padding:10px 13px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;position:relative}
 .story-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background 0.12s}
@@ -62,6 +74,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
 .story-card.hl{background:var(--navy-light)}
 .story-card.hl::before{background:var(--gold)}
 .stag{display:inline-block;font-size:9px;padding:2px 7px;border-radius:10px;margin-bottom:3px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;font-family:'DM Mono',monospace}
+.t-industrial{background:var(--ti-bg);color:var(--ti-fg)}
+.t-development{background:var(--td-bg);color:var(--td-fg)}
+.t-office{background:var(--to-bg);color:var(--to-fg)}
+.t-retail{background:var(--tr-bg);color:var(--tr-fg)}
+.t-land{background:var(--tl-bg);color:var(--tl-fg)}
+.t-manual{background:var(--tm-bg);color:var(--tm-fg)}
 .stitle{font-size:12px;font-weight:500;color:var(--ink);line-height:1.4;margin-bottom:2px}
 .smeta{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
 .snotes{font-size:11px;color:#333;margin-top:4px;line-height:1.5;border-left:2px solid var(--gold);padding-left:7px}
@@ -69,6 +87,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
 .slink:hover{text-decoration:underline}
 .ssource{font-size:10px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace}
 #empty-msg{padding:28px 16px;text-align:center;color:var(--muted);font-size:12px;line-height:1.8}
+
+/* add panel */
 #add-panel{display:none;flex:1;overflow-y:auto;padding:14px}
 #news-panel{display:none;flex:1;overflow-y:auto}
 .news-card{padding:10px 13px;border-bottom:1px solid var(--border)}
@@ -90,9 +110,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
 #add-btn{width:100%;padding:8px;font-size:12px;font-weight:600;background:var(--gold);color:var(--navy);border:none;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.1s}
 #add-btn:hover{background:#b8943d}
 #add-msg{font-size:11px;margin-top:6px;text-align:center;min-height:14px}
+
+/* legend */
 #legend{display:flex;gap:8px;flex-wrap:wrap;padding:6px 13px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface)}
 .leg{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
 .leg-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid white;box-shadow:0 0 0 1px rgba(0,0,0,0.18)}
+
+/* popup */
 /* area intel tab */
 #intel-panel{display:none;flex:1;overflow-y:auto;padding:14px;font-family:'DM Sans',sans-serif;flex-direction:column}
 #intel-addr{width:100%;padding:8px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;margin-bottom:8px;box-sizing:border-box}
@@ -153,20 +177,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
       <option value="30">Last 30 days</option>
       <option value="90">Last 90 days</option>
     </select>
-    <button id="refresh-btn" onclick="refreshFeed()">&#8635; Refresh Feed</button>
+    <button id="refresh-btn" onclick="refreshFeed()">⟳ Refresh Feed</button>
     <span id="last-checked"></span>
-    <span id="story-count">&#8212; stories</span>
+    <span id="story-count">— stories</span>
   </div>
 
   <div id="overlay-bar">
     <span id="overlay-label">Overlays:</span>
-    <button class="ovl-btn dot" onclick="toggleOverlay('dot',this)">
+    <button class="ovl-btn dot" data-overlay="dot" onclick="toggleOverlay('dot',this)">
       <span class="ovl-dot" style="background:#FF8C00"></span> NCDOT Projects
     </button>
-    <button class="ovl-btn permits" onclick="toggleOverlay('permits',this)">
+    <button class="ovl-btn permits" data-overlay="permits" onclick="toggleOverlay('permits',this)">
       <span class="ovl-dot" style="background:#1E88E5"></span> Filed Permits
     </button>
-    <button class="ovl-btn zoning" onclick="toggleOverlay('zoning',this)">
+    <button class="ovl-btn zoning" data-overlay="zoning" onclick="toggleOverlay('zoning',this)">
       <span class="ovl-dot" style="background:#8E24AA"></span> Zoning / Rezoning
     </button>
     <span id="overlay-status"></span>
@@ -177,26 +201,31 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
     <div id="sidebar">
       <div id="sidebar-tabs">
         <button class="stab active" data-tab="stories">Feed</button>
-        <button class="stab" data-tab="news">&#128�; News</button>
+        <button class="stab" data-tab="news">📰 News</button>
         <button class="stab" data-tab="add">+ Pin Story</button>
         <button class="stab" data-tab="intel">&#128270; Area Intel</button>
       </div>
+
       <div id="story-panel">
         <div id="empty-msg" style="display:none">No stories match your current filters.<br><br>Use <strong>+ Pin Story</strong> to add new deals, or adjust the filters above.</div>
       </div>
+
       <div id="news-panel">
-        <div id="news-empty-msg">No news stories yet.<br><br>Hit <strong>&#8635; Refresh Feed</strong> to check for TBJ stories.</div>
+        <div id="news-empty-msg">No news stories yet.<br><br>Hit <strong>⟳ Refresh Feed</strong> to check for TBJ stories that can't be mapped to a specific location.</div>
       </div>
+
       <div id="add-panel">
         <label>Paste TBJ Article Text *</label>
-        <textarea id="in-text" placeholder="Copy the full article text from TBJ and paste here. Claude will extract headline, location, deal type, and key facts.&#10;&#10;Then click Extract below."></textarea>
-        <button id="ai-btn" onclick="runExtract()">&#9889; Extract &amp; Auto-Fill</button>
+        <textarea id="in-text" placeholder="Copy the full article text from TBJ and paste it here. Claude will extract the headline, location, deal type, and key facts automatically.&#10;&#10;Then click Extract below."></textarea>
+        <button id="ai-btn" onclick="runExtract()">⚡ Extract &amp; Auto-Fill</button>
         <div id="ai-status"></div>
+
         <div class="divider"></div>
+
         <label>Headline</label>
         <input id="in-title" type="text" placeholder="Auto-filled from article"/>
         <label>TBJ Article URL</label>
-        <input id="in-url" type="text" placeholder="Auto-filled or paste manually"/>
+        <input id="in-url" type="text" placeholder="Auto-filled — or paste manually"/>
         <label>Location</label>
         <select id="in-loc"></select>
         <label>Category</label>
@@ -215,6 +244,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
         <button id="add-btn" onclick="addStory()">Pin to Map</button>
         <div id="add-msg"></div>
       </div>
+
       <div id="intel-panel">
         <input id="intel-addr" type="text" placeholder="Enter address to analyze (e.g. 1900 Lake Pine Dr, Cary)"/>
         <div class="intel-row">
@@ -232,6 +262,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
         <div id="intel-results"></div>
       </div>
 
+
       <div id="legend">
         <div class="leg"><div class="leg-dot" style="background:#8B4513"></div>Industrial</div>
         <div class="leg"><div class="leg-dot" style="background:#2E7D32"></div>Development</div>
@@ -240,11 +271,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
         <div class="leg"><div class="leg-dot" style="background:#AD1457"></div>Retail</div>
         <div class="leg"><div class="leg-dot" style="background:#C9A84C"></div>Pinned</div>
         <div class="leg" id="leg-dot" style="display:none"><div class="leg-dot" style="background:#FF8C00;border-radius:2px"></div>DOT</div>
-        <div class="leg" id="leg-permits" style="display:none"><div class="leg-dot" style="background:#1E88E5;border-radius:2px"></div>Permit</div>
+        <div class="leg" id="leg-permits" style="display:none"><div class="leg-dot" style="background:#1E88E5;border-radius:2px;transform:rotate(45deg)"></div>Permit</div>
         <div class="leg" id="leg-zoning" style="display:none"><div class="leg-dot" style="background:#8E24AA;border-radius:2px"></div>Zoning</div>
-        <div class="leg" id="leg-intel-sale" style="display:none"><div class="leg-dot" style="background:#C9A84C;border-radius:2px;transform:rotate(45deg)"></div>Sale</div>
-        <div class="leg" id="leg-intel-permit" style="display:none"><div class="leg-dot" style="background:#1E88E5;border-radius:2px"></div>Permit</div>
-        <div class="leg" id="leg-intel-pending" style="display:none"><div class="leg-dot" style="background:transparent;border:2px solid #FF8C00;border-radius:2px"></div>Pending</div>
       </div>
     </div>
   </div>
@@ -252,14 +280,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-
 // ── Config ────────────────────────────────────────────────────
 const LS_KEY = 'sas_tbj_map_v2';
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
-const CORS_PROXY = 'https://api.allorigins.win/get?url=';
-const RALEIGH_BASE = 'https://services.arcgis.com/v400IkDOw1ad7Yad/arcgis/rest/services/';
 
-const COLORS = {industrial:'#8B4513',development:'#2E7D32',office:'#1565C0',retail:'#AD1457',land:'#6A1B9A',manual:'#C9A84C'};
+// Multiple Nitter instances as fallbacks (public Twitter mirrors)
+const NITTER_INSTANCES = [
+  'https://nitter.privacydev.net',
+  'https://nitter.poast.org',
+  'https://nitter.1d4.us',
+];
+const TBJ_HANDLE = 'TriangleBIZJrnl';
+const CORS_PROXY = 'https://api.allorigins.win/get?url=';
+
+const COLORS = {
+  industrial:'#8B4513', development:'#2E7D32', office:'#1565C0',
+  retail:'#AD1457', land:'#6A1B9A', manual:'#C9A84C'
+};
 const TAG_CSS = {
   industrial:'background:var(--ti-bg);color:var(--ti-fg)',
   development:'background:var(--td-bg);color:var(--td-fg)',
@@ -362,9 +399,21 @@ function makeIcon(tag,isManual,precise){
     html:`<div style="width:${s}px;height:${s}px;border-radius:50%;background:${c};border:2.5px solid white;box-shadow:0 1px 6px rgba(0,0,0,0.4)"></div>`,
     iconSize:[s,s],iconAnchor:[s/2,s/2],popupAnchor:[0,-10]});
 }
+
+// ── localStorage ───────────────────────────────────────────────
 function loadPins(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'[]');}catch(e){return[];}}
 function savePins(pins){try{localStorage.setItem(LS_KEY,JSON.stringify(pins));}catch(e){}}
 
+// ── Twitter/X via Nitter ───────────────────────────────────────
+const CRE_KW = ['real estate','lease','leasing','industrial','warehouse','logistics','development',
+  'construction','rezoning','permit','office','retail','land','acres','sqft','square feet',
+  'multifamily','apartment','manufacturing','data center','flex space','groundbreaking',
+  'mixed-use','building','commercial','cre'];
+
+function isCRE(text){
+  const t=(text||'').toLowerCase();
+  return CRE_KW.some(k=>t.includes(k));
+}
 function detectTag(text){
   const t=text.toLowerCase();
   if(/industrial|logistics|distribution|manufacturing|warehouse|fulfillment|data.center/.test(t))return'industrial';
@@ -380,84 +429,187 @@ function detectLoc(text){
   }
   return null;
 }
+function extractTBJLink(text){
+  // Nitter expands t.co links — look for bizjournals URL
+  const m=text.match(/https?:\/\/(?:www\.)?bizjournals\.com\/triangle\/[^\s"<>]+/);
+  if(m)return m[0];
+  // fallback: any t.co or bit.ly link
+  const m2=text.match(/https?:\/\/(?:t\.co|bit\.ly)\/[^\s"<>]+/);
+  return m2?m2[0]:'https://www.bizjournals.com/triangle/news/commercial-real-estate';
+}
 
-// ── Geocoder ───────────────────────────────────────────────────
-const geocodeCache={};
-async function geocodeAddress(address){
-  if(!address)return null;
-  const key=address.toLowerCase().trim();
-  if(geocodeCache[key])return geocodeCache[key];
-  try{
-    const query=encodeURIComponent(address+', North Carolina, USA');
-    const resp=await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=us`,
-      {headers:{'Accept-Language':'en','User-Agent':'SAS-TBJ-DealMap/1.0'}});
-    const data=await resp.json();
-    if(data&&data[0]){
-      const r={lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
-      geocodeCache[key]=r; return r;
+async function fetchNitterFeed(instance){
+  const url=`${instance}/${TBJ_HANDLE}/rss`;
+  const proxyUrl=CORS_PROXY+encodeURIComponent(url);
+  const resp=await fetch(proxyUrl,{signal:AbortSignal.timeout(8000)});
+  const data=await resp.json();
+  const xml=new DOMParser().parseFromString(data.contents||'','text/xml');
+  const items=xml.querySelectorAll('item');
+  if(!items.length)throw new Error('No items');
+  return Array.from(items).map(item=>{
+    const title=(item.querySelector('title')?.textContent||'').trim();
+    const desc=(item.querySelector('description')?.textContent||'').replace(/<[^>]+>/g,'').trim();
+    const pubDate=(item.querySelector('pubDate')?.textContent||'').trim();
+    const fullText=title+' '+desc;
+    let dateIso='';
+    try{dateIso=new Date(pubDate).toISOString();}catch(e){}
+    return{title,desc,fullText,dateIso,link:extractTBJLink(fullText)};
+  });
+}
+
+// ── Geocoder (Nominatim / OSM) ─────────────────────────────────
+// Rate-limited: 1 req/sec per OSM policy. Cache results to avoid re-hitting.
+const geocodeCache = {};
+async function geocodeAddress(address) {
+  if(!address) return null;
+  const key = address.toLowerCase().trim();
+  if(geocodeCache[key]) return geocodeCache[key];
+  try {
+    // Append NC/Triangle context so short addresses resolve correctly
+    const query = encodeURIComponent(address + ', North Carolina, USA');
+    const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=us`;
+    const resp = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'SAS-TBJ-DealMap/1.0' } });
+    const data = await resp.json();
+    if(data && data[0]) {
+      const result = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
+      geocodeCache[key] = result;
+      return result;
     }
-  }catch(e){}
+  } catch(e) { console.warn('Geocode failed:', address, e.message); }
   return null;
 }
 
-// ── AI Article Geocoder ────────────────────────────────────────
-const aiGeoCache={};
-async function aiGeocodeArticle(title,url,existingNotes){
-  const cacheKey=url||title.substring(0,60);
-  if(aiGeoCache[cacheKey])return aiGeoCache[cacheKey];
-  try{
-    let articleText=title+' '+(existingNotes||'');
-    if(url&&url.includes('bizjournals.com')){
-      try{
-        const resp=await fetch(CORS_PROXY+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)});
-        const data=await resp.json();
-        if(data.contents){
-          const tmp=document.createElement('div');
-          tmp.innerHTML=data.contents;
-          articleText=(tmp.innerText||tmp.textContent||'').substring(0,3000);
+// Extract a street address from article text or notes using Claude
+async function extractAddress(title, notes) {
+  const text = (title + ' ' + (notes||'')).substring(0, 500);
+  // Quick regex pass first — look for common address patterns
+  const addrMatch = text.match(/\d{2,5}\s+[A-Z][a-zA-Z\s]{3,40}(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Boulevard|Blvd|Way|Lane|Ln|Court|Ct|Highway|Hwy|Pike|Parkway|Pkwy)[,.\s]/);
+  if(addrMatch) return addrMatch[0].trim().replace(/[,.]$/, '');
+  return null;
+}
+
+// Throttle queue for geocoding (respect 1 req/sec Nominatim limit)
+const geocodeQueue = [];
+let geocodeRunning = false;
+async function queueGeocode(story) {
+  return new Promise((resolve) => {
+    geocodeQueue.push({ story, resolve });
+    if(!geocodeRunning) drainGeocodeQueue();
+  });
+}
+async function drainGeocodeQueue() {
+  geocodeRunning = true;
+  while(geocodeQueue.length) {
+    const { story, resolve } = geocodeQueue.shift();
+    const addr = await extractAddress(story.title, story.notes);
+    if(addr) {
+      const geo = await geocodeAddress(addr);
+      if(geo) {
+        // Validate it's within Triangle bounding box (rough check)
+        if(geo.lat > 35.2 && geo.lat < 36.6 && geo.lng > -80.0 && geo.lng < -77.8) {
+          resolve({ lat: geo.lat, lng: geo.lng, precise: true, addressUsed: addr });
+          await new Promise(r => setTimeout(r, 1100)); // Nominatim rate limit
+          continue;
         }
-      }catch(e){}
+      }
     }
-    const locList=PLACES.map(p=>p.name).join(', ');
-    const prompt=`From this Triangle Business Journal article, extract:
-1. Street address of the property (e.g. "800 CentreGreen Way, Cary") — only if explicitly mentioned
-2. Best submarket from: ${locList}
-Return ONLY valid JSON: {"address":"full street address or empty string","loc":"submarket name"}
-Title: ${title}
-Text: ${articleText.substring(0,2000)}`;
-    const resp=await fetch(ANTHROPIC_API,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:150,messages:[{role:'user',content:prompt}]})});
-    const data=await resp.json();
-    const parsed=JSON.parse((data.content?.[0]?.text||'').replace(/```json|```/g,'').trim());
-    let result={address:parsed.address||'',loc:parsed.loc||''};
-    if(result.address){
-      const geo=await geocodeAddress(result.address);
-      if(geo&&geo.lat>35.2&&geo.lat<36.6&&geo.lng>-80.0&&geo.lng<-77.8){result.lat=geo.lat;result.lng=geo.lng;}
-    }
-    aiGeoCache[cacheKey]=result; return result;
-  }catch(e){return null;}
+    resolve(null); // fallback to submarket centroid
+  }
+  geocodeRunning = false;
 }
 
-// ── Auto-Refresh ───────────────────────────────────────────────
-const AUTO_REFRESH_MS=30*60*1000;
-let autoRefreshTimer=null,lastCheckedAt=null;
-function updateLastChecked(){
-  const el=document.getElementById('last-checked');
-  if(!el||!lastCheckedAt)return;
-  const mins=Math.round((Date.now()-lastCheckedAt)/60000);
-  el.textContent=mins<1?'checked just now':`checked ${mins}m ago`;
+// ── AI Article Geocoder ───────────────────────────────────────
+// Uses Claude to extract address from article text, then Nominatim to resolve coords
+const aiGeoCache = {};
+async function aiGeocodeArticle(title, url, existingNotes) {
+  const cacheKey = url || title.substring(0,60);
+  if(aiGeoCache[cacheKey]) return aiGeoCache[cacheKey];
+
+  try {
+    // Fetch article text via allorigins CORS proxy
+    let articleText = title + ' ' + existingNotes;
+    if(url && url.includes('bizjournals.com')) {
+      try {
+        const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+        const resp = await fetch(proxyUrl, {signal: AbortSignal.timeout(8000)});
+        const data = await resp.json();
+        if(data.contents) {
+          // Strip HTML tags, get plain text
+          const tmp = document.createElement('div');
+          tmp.innerHTML = data.contents;
+          articleText = (tmp.innerText || tmp.textContent || '').substring(0, 3000);
+        }
+      } catch(e) { /* proxy failed, use title only */ }
+    }
+
+    // Ask Claude to extract address and location
+    const locList = PLACES.map(p=>p.name).join(', ');
+    const prompt = `From this Triangle Business Journal article text, extract:
+1. Street address of the property (e.g. "800 CentreGreen Way, Cary" or "1548 E Williams St, Apex") — only if explicitly mentioned
+2. Best submarket match from: ${locList}
+
+Return ONLY valid JSON: {"address": "full street address or empty string", "loc": "submarket name"}
+
+Article title: ${title}
+Article text: ${articleText.substring(0, 2000)}`;
+
+    const resp = await fetch(ANTHROPIC_API, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 150,
+        messages: [{role: 'user', content: prompt}]
+      })
+    });
+    const data = await resp.json();
+    const raw = (data.content?.[0]?.text || '').replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(raw);
+
+    let result = { address: parsed.address||'', loc: parsed.loc||'' };
+
+    // If address found, geocode it
+    if(result.address) {
+      const geo = await geocodeAddress(result.address);
+      if(geo && geo.lat > 35.2 && geo.lat < 36.6 && geo.lng > -80.0 && geo.lng < -77.8) {
+        result.lat = geo.lat;
+        result.lng = geo.lng;
+      }
+    }
+
+    aiGeoCache[cacheKey] = result;
+    return result;
+  } catch(e) {
+    console.warn('aiGeocodeArticle failed:', e.message);
+    return null;
+  }
 }
-function startAutoRefresh(){
-  if(autoRefreshTimer)clearInterval(autoRefreshTimer);
-  setInterval(updateLastChecked,60000);
-  autoRefreshTimer=setInterval(()=>{
-    const btn=document.getElementById('refresh-btn');
+
+// ── Auto-Refresh Engine ────────────────────────────────────────
+const AUTO_REFRESH_MS = 30 * 60 * 1000; // 30 minutes
+let autoRefreshTimer = null;
+let lastCheckedAt = null;
+
+function updateLastChecked() {
+  const el = document.getElementById('last-checked');
+  if(!el || !lastCheckedAt) return;
+  const mins = Math.round((Date.now() - lastCheckedAt) / 60000);
+  el.textContent = mins < 1 ? 'checked just now' : `checked ${mins}m ago`;
+}
+
+function startAutoRefresh() {
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  // Update the "X min ago" display every minute
+  setInterval(updateLastChecked, 60000);
+  // Auto-refresh every 30 min
+  autoRefreshTimer = setInterval(() => {
+    const btn = document.getElementById('refresh-btn');
     btn.classList.add('auto-pulse');
-    refreshFeed(true).finally(()=>btn.classList.remove('auto-pulse'));
-  },AUTO_REFRESH_MS);
+    refreshFeed(true).finally(() => btn.classList.remove('auto-pulse'));
+  }, AUTO_REFRESH_MS);
 }
 
-// ── Gmail Refresh ──────────────────────────────────────────────
+
 // ── TBJ Email Parsers ──────────────────────────────────────────────────────
 
 function isTroyerAlert(email){
@@ -521,9 +673,9 @@ async function filterCREHeadlines(headlines){
     +'[{"title":"exact headline","loc":"Triangle city or null",'
     +'"tag":"industrial|development|office|land|retail",'
     +'"notes":"1 sentence: what happened, key numbers, CRE impact"}]\n\n'
-    +'Headlines:\n'+list+'\n\nReturn ONLY valid JSON array. If none relevant return [].';
-  try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{
+    +'Headlines:\n'+list+'\n\nReturn ONLY valid JSON array. If none relevant return [].'
+;  try{
+    const r=await fetch(ANTHROPIC_API,{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
         messages:[{role:'user',content:prompt}]})
@@ -548,10 +700,8 @@ async function refreshFeed(isAuto=false){
     if(!searchResp.ok)throw new Error('Gmail MCP unreachable');
     const messages=(await searchResp.json())?.result?.messages||[];
     if(!messages.length){btn.disabled=false;btn.textContent='\u27f3 Refresh Feed';return;}
-
     const existing=new Set(allStories.map(s=>s.title.toLowerCase().substring(0,60)));
     let added=0;
-
     for(const msg of messages.slice(0,15)){
       try{
         const msgResp=await fetch('https://gmail.mcp.claude.com/mcp',{
@@ -566,31 +716,25 @@ async function refreshFeed(isAuto=false){
           ?new Date(email.headers.Date).toISOString().split('T')[0]
           :new Date().toISOString().split('T')[0];
         const isTroyer=isTroyerAlert(email);
-
         const rawHeadlines=extractTBJHeadlines(body,isTroyer);
         if(!rawHeadlines.length)continue;
-
         let creStories=await filterCREHeadlines(rawHeadlines);
-        // Fallback: if AI filter fails or returns nothing, use keyword matching
         if(!creStories.length){
           creStories=rawHeadlines.filter(h=>{
             const t=h.title.toLowerCase();
-            return ['sq ft','office','industrial','warehouse','lease','sale','sold','develop',
-              'build','construction','permit','zoning','rezone','data center','retail','hotel',
-              'apartment','mixed use','land','acres','tower','hub','campus','facility',
-              'contractor','manufacturer','distribution','flex','rtp','project','site',
-              'plans','buys','opens','expands','moves','hires','jobs','plans gain',
-              'rises','space','park','center','opens','purchases','acquires','relocat',
-              'downtown','corridor','campus','bookstore','coffee','restaurant'].some(k=>t.includes(k));
+            return ['sq ft','office','industrial','warehouse','lease','sale','sold',
+              'develop','build','construction','permit','zoning','rezone','data center',
+              'retail','hotel','apartment','mixed use','land','acres','tower','hub',
+              'campus','facility','contractor','manufacturer','distribution','plans',
+              'buys','opens','expands','rises','park','center','purchases','acquires',
+              'downtown','corridor'].some(k=>t.includes(k));
           }).map(h=>({title:h.title,loc:detectLoc(h.title),tag:detectTag(h.title),notes:''}));
         }
         if(!creStories.length)continue;
-
         for(const ds of creStories){
           const titleKey=ds.title.toLowerCase().substring(0,60);
           if(existing.has(titleKey))continue;
           existing.add(titleKey);
-
           let detectedLoc=ds.loc||detectLoc(ds.title),storyAddress='',preciseLat=null,preciseLng=null;
           try{
             const aiGeo=await aiGeocodeArticle(ds.title,'',ds.notes||'');
@@ -600,13 +744,11 @@ async function refreshFeed(isAuto=false){
               if(aiGeo.lat&&aiGeo.lng){preciseLat=aiGeo.lat;preciseLng=aiGeo.lng;}
             }
           }catch(e){}
-
           const rawMatch=rawHeadlines.find(h=>
             h.title.toLowerCase().includes(ds.title.toLowerCase().substring(0,40)));
           const isBreaking=!!(rawMatch&&rawMatch.isBreaking)||isTroyer;
           const link='https://www.bizjournals.com/triangle';
-          const dispTitle=(isBreaking?'\U0001f6a8 ':'')+ds.title.substring(0,160);
-
+          const dispTitle=(isBreaking?'\ud83d\udea8 ':'')+ds.title.substring(0,160);
           if(detectedLoc||preciseLat){
             const story={title:dispTitle,link,notes:ds.notes||'',
               tag:ds.tag||detectTag(ds.title),loc:detectedLoc||'Triangle',
@@ -620,7 +762,6 @@ async function refreshFeed(isAuto=false){
         }
       }catch(e){console.warn('msg failed',msg.messageId||msg.id,e.message);}
     }
-
     btn.disabled=false;btn.textContent='\u27f3 Refresh Feed';
     lastCheckedAt=Date.now();updateLastChecked();
     renderAll();renderNews();updateNewsTabCount();
@@ -632,10 +773,295 @@ async function refreshFeed(isAuto=false){
     lastCheckedAt=Date.now();updateLastChecked();
   }
 }
-// ── Curated NCDOT STIP 2026-2035 Triangle Projects ────────────
-// Source: NCDOT 2026-2035 STIP (FHWA approved Dec 2025) + CAMPO/TWTPO TIP
-// Covers Wake, Durham, Orange, Johnston, Chatham, Franklin counties
-// Focused on highway/interchange projects with CRE relevance (ROW acquisition, access changes)
+
+async function runExtract(){
+  const text=document.getElementById('in-text').value.trim();
+  const btn=document.getElementById('ai-btn');
+  const status=document.getElementById('ai-status');
+  if(!text){status.textContent='Paste article text first.';status.style.color='var(--red)';return;}
+
+  btn.disabled=true;btn.textContent='Extracting...';
+  status.textContent='Calling Claude...';status.style.color='var(--navy-mid)';
+
+  const locList=PLACES.map(p=>p.name).join(', ');
+  const prompt=`Extract CRE deal info from this Triangle Business Journal article. Return ONLY valid JSON, no markdown.
+
+{
+  "title": "concise deal headline, max 120 chars",
+  "url": "the bizjournals.com article URL if present in text, else empty string",
+  "location": "best match from: ${locList}",
+  "address": "street address if mentioned (e.g. '123 Main St, Cary'), else empty string",
+  "tag": "one of: industrial, development, office, land, retail",
+  "notes": "key facts: SF or acres, price or $/SF, tenant/buyer/seller, address if mentioned — 1-2 sentences",
+  "date": "YYYY-MM-DD if found, else today ${new Date().toISOString().slice(0,10)}"
+}
+
+Article:
+${text.substring(0,4000)}`;
+
+  try{
+    const resp=await fetch(ANTHROPIC_API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,
+        messages:[{role:'user',content:prompt}]})
+    });
+    const data=await resp.json();
+    const raw=(data.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
+    const p=JSON.parse(raw);
+    if(p.title)document.getElementById('in-title').value=p.title;
+    if(p.url)document.getElementById('in-url').value=p.url;
+    if(p.notes)document.getElementById('in-notes').value=p.notes;
+    if(p.date)document.getElementById('ai-btn').dataset.date=p.date;
+    if(p.address){document.getElementById('ai-btn').dataset.address=p.address;document.getElementById('in-address').value=p.address;}
+    if(p.location){
+      const sel=document.getElementById('in-loc');
+      const opt=Array.from(sel.options).find(o=>o.value===p.location);
+      if(opt)sel.value=p.location;
+    }
+    if(p.tag){
+      const sel=document.getElementById('in-tag');
+      const opt=Array.from(sel.options).find(o=>o.value===p.tag);
+      if(opt)sel.value=p.tag;
+    }
+    status.textContent='Done — review then hit Pin to Map.';status.style.color='var(--green)';
+    btn.textContent='⚡ Extract & Auto-Fill';btn.disabled=false;
+  }catch(e){
+    status.textContent='Extract failed: '+e.message;status.style.color='var(--red)';
+    btn.textContent='⚡ Extract & Auto-Fill';btn.disabled=false;
+  }
+}
+
+// ── Add story ──────────────────────────────────────────────────
+async function addStory(){
+  const title=document.getElementById('in-title').value.trim();
+  const url=document.getElementById('in-url').value.trim();
+  const loc=document.getElementById('in-loc').value;
+  const tag=document.getElementById('in-tag').value;
+  const notes=document.getElementById('in-notes').value.trim();
+  const date=document.getElementById('ai-btn').dataset.date||new Date().toISOString().slice(0,10);
+  const address=document.getElementById('in-address').value.trim()||document.getElementById('ai-btn').dataset.address||'';
+  const msg=document.getElementById('add-msg');
+  if(!title){msg.textContent='Headline required.';msg.style.color='var(--red)';return;}
+
+  const story={title,link:url||'https://www.bizjournals.com/triangle/news/commercial-real-estate',
+    notes,tag,loc,date,address,source:'manual',manual:true,_id:Date.now()};
+
+  // Try to geocode to exact address
+  if(address) {
+    msg.textContent='Geocoding address...';msg.style.color='var(--navy-mid)';
+    const geo = await geocodeAddress(address);
+    if(geo && geo.lat > 35.2 && geo.lat < 36.6 && geo.lng > -80.0 && geo.lng < -77.8) {
+      story._lat = geo.lat;
+      story._lng = geo.lng;
+      story._precise = true;
+    }
+  }
+
+  allStories.unshift(story);
+  const pins=loadPins();pins.unshift(story);savePins(pins);
+
+  msg.textContent = story._precise ? '📍 Pinned to exact address!' : 'Pinned!';
+  msg.style.color='var(--green)';
+  ['in-title','in-url','in-notes','in-text','in-address'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ai-status').textContent='';
+  delete document.getElementById('ai-btn').dataset.date;
+  delete document.getElementById('ai-btn').dataset.address;
+  setTimeout(()=>{msg.textContent='';},2500);
+  document.querySelector('.stab[data-tab="stories"]').click();
+  renderAll();
+}
+
+// ── Render ─────────────────────────────────────────────────────
+function getFiltered(){
+  let s=allStories;
+  if(activeFilter!=='all')s=s.filter(x=>x.tag===activeFilter);
+  if(activeDays!=='all'){
+    const cut=Date.now()-parseInt(activeDays)*86400000;
+    s=s.filter(x=>x.manual||dateMs(x.date)>cut);
+  }
+  return s;
+}
+
+function renderAll(){
+  activeMarkers.forEach(m=>map.removeLayer(m));
+  activeMarkers=[];
+  const panel=document.getElementById('story-panel');
+  // keep empty-msg if present, clear cards
+  const cards=panel.querySelectorAll('.story-card');
+  cards.forEach(c=>c.remove());
+
+  const filtered=getFiltered();
+  document.getElementById('story-count').textContent=filtered.length+' stories';
+  document.querySelector('.stab[data-tab="stories"]').textContent='Feed ('+filtered.length+')';
+
+  // Show/hide static empty-msg
+  const emptyMsg = document.getElementById('empty-msg');
+  if(emptyMsg) emptyMsg.style.display = filtered.length===0 ? 'block' : 'none';
+
+  filtered.forEach(story=>{
+    const tagKey=story.manual?'manual':story.tag;
+    const tagStyle=TAG_CSS[tagKey]||TAG_CSS.office;
+    const place=findPlace(story.loc);
+    const sourceLabel=story.source==='gmail'?'via TBJ Newsletter':story.source==='twitter'?'via @TriangleBIZJrnl':story.source==='manual'?'manually pinned':'seed data';
+
+    const card=document.createElement('div');
+    card.className='story-card';
+    card.innerHTML=
+      `<span class="stag" style="${tagStyle}">${story.manual?'pinned':story.tag}</span>`+
+      `<div class="stitle">${story.title}</div>`+
+      `<div class="smeta">${story.loc||'Triangle'} &middot; ${fmtDate(story.date)}</div>`+
+      (story._precise ? `<div class="geo-exact">📍 ${story.address}</div>` : '')+
+      (story.notes?`<div class="snotes">${story.notes}</div>`:'')+
+      (story.link?`<a class="slink" href="${story.link}" target="_blank">Read on TBJ &rarr;</a>`:'')+
+      `<div class="ssource">${sourceLabel}</div>`;
+
+    if(place || story._lat){
+      if(!story._lat){story._lat=jitter(place.lat);story._lng=jitter(place.lng);}
+      const precise = story._precise === true;
+      const m=L.marker([story._lat,story._lng],{icon:makeIcon(story.tag,story.manual,precise)}).addTo(map);
+      const geoLabel = precise
+        ? `<div class="geo-exact">📍 ${story.address||'exact address'}</div>`
+        : `<div class="geo-approx">◎ ${story.loc||'Triangle'} area</div>`;
+      m.bindPopup(
+        `<span class="p-tag" style="${tagStyle}">${story.manual?'pinned':story.tag}</span>`+
+        `<div class="p-title">${story.title}</div>`+
+        `<div class="p-meta">${fmtDate(story.date)}</div>`+
+        geoLabel+
+        (story.notes?`<div class="p-notes">${story.notes}</div>`:'')+
+        (story.link?`<a class="p-link" href="${story.link}" target="_blank">Read full story on TBJ &rarr;</a>`:'')+
+        `<div class="p-source">${sourceLabel}</div>`,
+        {maxWidth:260}
+      );
+      m.on('click',()=>{
+        panel.querySelectorAll('.story-card').forEach(c=>c.classList.remove('hl'));
+        card.classList.add('hl');
+        card.scrollIntoView({behavior:'smooth',block:'nearest'});
+      });
+      card.addEventListener('click',()=>{
+        panel.querySelectorAll('.story-card').forEach(c=>c.classList.remove('hl'));
+        card.classList.add('hl');
+        map.setView([story._lat,story._lng],13,{animate:true});
+        m.openPopup();
+      });
+      activeMarkers.push(m);
+    }else if(!story._lat){
+      card.style.opacity='0.55';
+      card.title='No Triangle location detected';
+    }
+    panel.appendChild(card);
+  });
+}
+
+// ── Map ────────────────────────────────────────────────────────
+function initMap(){
+  map=L.map('map');
+  map.setView([35.82,-78.80],10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom:19
+  }).addTo(map);
+}
+
+// ── Overlay Engine ────────────────────────────────────────────
+const RALEIGH_BASE = 'https://services.arcgis.com/v400IkDOw1ad7Yad/arcgis/rest/services/';
+
+// Triangle bounding box for spatial queries
+const BBOX = '-79.2,35.4,-78.3,36.2';
+const BBOX_ENV = encodeURIComponent('{"xmin":-79.2,"ymin":35.4,"xmax":-78.3,"ymax":36.2}');
+
+const overlayLayers = { dot: null, permits: null, zoning: null };
+const overlayActive = { dot: false, permits: false, zoning: false };
+const overlayLoaded = { dot: false, permits: false, zoning: false };
+
+// ── Icon factories ──────────────────────────────────────────────
+function makeDotIcon() {
+  // Orange square outline — DOT project marker
+  return L.divIcon({ className: '',
+    html: `<div style="width:13px;height:13px;border:2.5px solid #FF8C00;background:rgba(255,140,0,0.18);border-radius:2px;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
+    iconSize:[13,13], iconAnchor:[6,6], popupAnchor:[0,-10] });
+}
+function makePermitIcon() {
+  // Blue diamond
+  return L.divIcon({ className: '',
+    html: `<div style="width:11px;height:11px;background:#1E88E5;border:2px solid white;border-radius:2px;transform:rotate(45deg);box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
+    iconSize:[13,13], iconAnchor:[6,6], popupAnchor:[0,-10] });
+}
+function makeZoningIcon() {
+  // Purple pentagon-ish — use circle with different border
+  return L.divIcon({ className: '',
+    html: `<div style="width:12px;height:12px;background:#8E24AA;border:2.5px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
+    iconSize:[13,13], iconAnchor:[6,6], popupAnchor:[0,-10] });
+}
+
+// ── Fetch helpers ───────────────────────────────────────────────
+function setOverlayStatus(msg) {
+  const el = document.getElementById('overlay-status');
+  if(el) el.textContent = msg;
+}
+
+async function fetchDotLayer() {
+  setOverlayStatus('Loading DOT projects...');
+  const lg = L.layerGroup();
+
+  // NCDOT projects from Raleigh's CBN layer (confirmed working, no CORS issues)
+  const url = RALEIGH_BASE + 'CBN_NCDOT_Projects/FeatureServer/0/query?where=1%3D1&outFields=ProjectID,URL&f=json&resultRecordCount=200';
+  const r = await fetch(url, {signal: AbortSignal.timeout(10000)});
+  const data = await r.json();
+
+  for(const feat of (data.features || [])) {
+    const attr = feat.attributes;
+    const geom = feat.geometry;
+    if(!geom) continue;
+
+    // Convert rings polygon to Leaflet
+    let latlngs;
+    if(geom.rings) {
+      latlngs = geom.rings[0].map(([x,y]) => [y,x]);
+      const poly = L.polygon(latlngs, {
+        color: '#FF8C00', weight: 2.5, fillColor: '#FF8C00',
+        fillOpacity: 0.08, dashArray: '6 4'
+      });
+      poly.bindPopup(
+        `<span class="p-tag" style="background:#FF8C00;color:#fff">NCDOT</span>` +
+        `<div class="p-title">Project ${attr.ProjectID}</div>` +
+        `<div class="p-meta">NCDOT Transportation Improvement Program</div>` +
+        (attr.URL ? `<a class="p-link" href="${attr.URL}" target="_blank">View project details →</a>` : ''),
+        {maxWidth: 240}
+      );
+      lg.addLayer(poly);
+
+      // Also place a centered label marker
+      try {
+        const bounds = L.polygon(latlngs).getBounds();
+        const center = bounds.getCenter();
+        const m = L.marker([center.lat, center.lng], {icon: makeDotIcon()});
+        m.bindPopup(
+          `<span class="p-tag" style="background:#FF8C00;color:#fff">NCDOT</span>` +
+          `<div class="p-title">Project ${attr.ProjectID}</div>` +
+          (attr.URL ? `<a class="p-link" href="${attr.URL}" target="_blank">View project details →</a>` : ''),
+          {maxWidth: 220}
+        );
+        lg.addLayer(m);
+      } catch(e) {}
+    } else if(geom.x && geom.y) {
+      const m = L.marker([geom.y, geom.x], {icon: makeDotIcon()});
+      m.bindPopup(
+        `<span class="p-tag" style="background:#FF8C00;color:#fff">NCDOT</span>` +
+        `<div class="p-title">Project ${attr.ProjectID}</div>` +
+        (attr.URL ? `<a class="p-link" href="${attr.URL}" target="_blank">View project details →</a>` : ''),
+        {maxWidth: 220}
+      );
+      lg.addLayer(m);
+    }
+  }
+
+  setOverlayStatus(`${data.features?.length||0} DOT projects loaded`);
+  setTimeout(() => setOverlayStatus(''), 3000);
+  return lg;
+}
+
+
 const STIP_PROJECTS = [
   // ── I-540 Beltway ────────────────────────────────────────────────────────
   {
@@ -837,6 +1263,7 @@ const STIP_PROJECTS = [
   },
 ];
 
+
 // Cache geocoded DOT locations so they persist across toggles
 const dotGeoCache = {};
 
@@ -921,483 +1348,174 @@ async function fetchDotLayer(){
   return lg;
 }
 
-async function fetchPermitsLayer(){
+async function fetchPermitsLayer() {
   setOverlayStatus('Loading filed permits...');
-  const lg=L.layerGroup();
-  const where=encodeURIComponent("permitclassmapped='Non-Residential' AND latitude_perm IS NOT NULL");
-  const fields='permitnum,projectname,description,originaladdress1,originalcity,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,landusedescription,pin';
-  const url=RALEIGH_BASE+`Building_Permits_Past_31_Days/FeatureServer/0/query?where=${where}&outFields=${fields}&f=json&resultRecordCount=500&orderByFields=issueddate+DESC`;
-  const data=(await (await fetch(url,{signal:AbortSignal.timeout(10000)})).json());
-  let count=0;
-  for(const feat of(data.features||[])){
-    const a=feat.attributes;
-    const lat=a.latitude_perm,lng=a.longitude_perm;
-    if(!lat||!lng)continue;
-    if((a.estprojectcost||0)<50000&&!a.totalsqft)continue;
-    const cost=a.estprojectcost?'$'+(a.estprojectcost>=1e6?(a.estprojectcost/1e6).toFixed(1)+'M':(a.estprojectcost/1000).toFixed(0)+'K'):'';
-    const sqft=a.totalsqft?`${a.totalsqft.toLocaleString()} SF`:'';
-    const issued=a.issueddate?new Date(a.issueddate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
-    const addr=[a.originaladdress1,a.originalcity].filter(Boolean).join(', ');
-    const m=L.marker([lat,lng],{icon:makePermitIcon()});
+  const lg = L.layerGroup();
+
+  // Commercial permits issued in the last 31 days — filter to non-residential
+  const where = encodeURIComponent("permitclassmapped='Non-Residential' AND latitude_perm IS NOT NULL");
+  const fields = 'permitnum,projectname,description,originaladdress1,originalcity,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,permitclassmapped,landusedescription';
+  const url = RALEIGH_BASE + `Building_Permits_Past_31_Days/FeatureServer/0/query?where=${where}&outFields=${fields}&f=json&resultRecordCount=500&orderByFields=issueddate+DESC`;
+  const r = await fetch(url, {signal: AbortSignal.timeout(10000)});
+  const data = await r.json();
+
+  let count = 0;
+  for(const feat of (data.features || [])) {
+    const a = feat.attributes;
+    const lat = a.latitude_perm, lng = a.longitude_perm;
+    if(!lat || !lng) continue;
+    // Skip residential and tiny permits
+    if((a.estprojectcost || 0) < 50000 && !a.totalsqft) continue;
+
+    const cost = a.estprojectcost ? '$' + (a.estprojectcost >= 1e6
+      ? (a.estprojectcost/1e6).toFixed(1)+'M'
+      : (a.estprojectcost/1000).toFixed(0)+'K') : '';
+    const sqft = a.totalsqft ? `${a.totalsqft.toLocaleString()} SF` : '';
+    const issued = a.issueddate ? new Date(a.issueddate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    const addr = [a.originaladdress1, a.originalcity].filter(Boolean).join(', ');
+
+    const m = L.marker([lat, lng], {icon: makePermitIcon()});
     m.bindPopup(
-      `<span class="p-tag" style="background:#1E88E5;color:#fff">PERMIT</span>`+
-      `<div class="p-title">${a.projectname||a.description||'Building Permit'}</div>`+
-      `<div class="p-meta">${addr}</div>`+
-      `<div class="p-notes">${[a.workclassmapped,a.landusedescription,sqft,cost].filter(Boolean).join(' · ')}</div>`+
-      `<div class="p-meta">Issued ${issued} · ${a.statuscurrentmapped||''}</div>`+
-      `<div class="p-source">${a.permitnum||''}</div>` +
-      `<div style="margin-top:5px;display:flex;flex-direction:column;gap:3px">` +
-      (a.pin ? `<a class="p-link" href="https://maps.raleighnc.gov/iMAPS/?pin=${a.pin}" target="_blank" style="color:#1E88E5">&#128205; View parcel on iMAPS &rarr;</a>` : `<a class="p-link" href="https://maps.raleighnc.gov/iMAPS/" target="_blank" style="color:#1E88E5">&#128205; Raleigh iMAPS &rarr;</a>`) +
-      `</div>`,{maxWidth:280});
-    lg.addLayer(m);count++;
+      `<span class="p-tag" style="background:#1E88E5;color:#fff">PERMIT</span>` +
+      `<div class="p-title">${a.projectname || a.description || 'Building Permit'}</div>` +
+      `<div class="p-meta">${addr}</div>` +
+      `<div class="p-notes">${[a.workclassmapped, a.landusedescription, sqft, cost].filter(Boolean).join(' · ')}</div>` +
+      `<div class="p-meta">Issued ${issued} · ${a.statuscurrentmapped||''}</div>` +
+      `<div class="p-source">${a.permitnum||''}</div>`,
+      {maxWidth: 260}
+    );
+    lg.addLayer(m);
+    count++;
   }
+
   setOverlayStatus(`${count} commercial permits loaded`);
-  setTimeout(()=>setOverlayStatus(''),3000);
+  setTimeout(() => setOverlayStatus(''), 3000);
   return lg;
 }
 
-async function fetchZoningLayer(){
+async function fetchZoningLayer() {
   setOverlayStatus('Loading zoning cases...');
-  const lg=L.layerGroup();
-  // *** KEY FIX: use timestamp string format (NOT epoch ms) + outSR=4326 for proper coordinates ***
-  const zoningUrl=RALEIGH_BASE+`Rezoning_Case_Boundaries_View/FeatureServer/0/query?where=StatusDate+>+timestamp+'2023-01-01+00:00:00'&outFields=ZONE_CASE,Location,Acres,PrevZoning,ZON_REQ,STATUS,StatusDate,CASE_TYPE,CurrentInfoLink,IMAPS_Link,EG_Link&f=json&resultRecordCount=300&outSR=4326`;
-  const dpUrl=RALEIGH_BASE+`Development_Plans/FeatureServer/0/query?where=status+IN+('Review+In+Progress','Pending','Filed','Submitted')&outFields=plan_name,plan_number,plan_type,status,major_street,developer,acreage,submitted,zoning&f=json&resultRecordCount=200`;
-  const [zData,dpData]=await Promise.all([
-    fetch(zoningUrl,{signal:AbortSignal.timeout(10000)}).then(r=>r.json()),
-    fetch(dpUrl,{signal:AbortSignal.timeout(10000)}).then(r=>r.json())
-  ]);
-  let count=0;
-  for(const feat of(zData.features||[])){
-    const a=feat.attributes,geom=feat.geometry;
-    if(!geom?.rings)continue;
-    // outSR=4326 means rings are already [lng,lat]
-    const ll=geom.rings[0].map(([x,y])=>[y,x]);
-    const statusColor=a.STATUS==='Approved'?'#2E7D32':a.STATUS==='Withdrawn'||a.STATUS==='Denied'?'#888':'#8E24AA';
-    const poly=L.polygon(ll,{color:statusColor,weight:2,fillColor:statusColor,fillOpacity:0.1});
-    const statusDate=a.StatusDate?new Date(a.StatusDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
-    const popup=
-      `<span class="p-tag" style="background:${statusColor};color:#fff">REZONING</span>`+
-      `<div class="p-title">${a.ZONE_CASE||''} &mdash; ${a.ZON_REQ||'Requested'}</div>`+
-      `<div class="p-notes">${[a.Acres?a.Acres.toFixed(1)+' acres':'',a.PrevZoning?'From: '+a.PrevZoning:'',a.Location||''].filter(Boolean).join(' · ')}</div>`+
-      `<div class="p-meta">Status: ${a.STATUS||''} · ${statusDate}</div>`+
-      `<div style="margin-top:5px;display:flex;flex-direction:column;gap:3px">`+
-      (a.IMAPS_Link?`<a class="p-link" href="${a.IMAPS_Link}" target="_blank" style="color:#8E24AA">&#128205; View parcel on iMAPS &rarr;</a>`:`<a class="p-link" href="https://maps.raleighnc.gov/iMAPS/" target="_blank" style="color:#8E24AA">&#128205; Raleigh iMAPS &rarr;</a>`)+
-      (a.EG_Link?`<a class="p-link" href="${a.EG_Link}" target="_blank" style="color:#8E24AA">&#128196; Case documents &rarr;</a>`:'')+
-      `<a class="p-link" href="https://engage.raleighnc.gov/rezoning" target="_blank" style="color:#8E24AA">&#128196; Active rezoning cases &rarr;</a>`+
-      `</div>`;
-    poly.bindPopup(popup,{maxWidth:260});
-    try{const center=L.polygon(ll).getBounds().getCenter();const m=L.marker([center.lat,center.lng],{icon:makeZoningIcon()});m.bindPopup(popup,{maxWidth:260});lg.addLayer(m);}catch(e){}
-    lg.addLayer(poly);count++;
+  const lg = L.layerGroup();
+
+  // Active/pending rezoning cases
+  const where = encodeURIComponent("STATUS IN ('Pending','In Review','Active','Approved','Filed')");
+  // Only last 2 years to keep it relevant
+  const since = Date.now() - (2 * 365 * 86400000);
+  const whereDate = encodeURIComponent(`StatusDate > ${since} OR STATUS='Pending' OR STATUS='In Review'`);
+  const fields = 'ZONE_CASE,Location,Acres,PrevZoning,ZON_REQ,STATUS,StatusDate,CASE_TYPE,CurrentInfoLink';
+  const url = RALEIGH_BASE + `Rezoning_Case_Boundaries_View/FeatureServer/0/query?where=${whereDate}&outFields=${fields}&f=json&resultRecordCount=300&orderByFields=StatusDate+DESC`;
+  const r = await fetch(url, {signal: AbortSignal.timeout(10000)});
+  const data = await r.json();
+
+  // Also fetch active development plans
+  const dpWhere = encodeURIComponent("status IN ('Review In Progress','Pending','Filed','Submitted')");
+  const dpFields = 'plan_name,plan_number,plan_type,status,major_street,developer,acreage,submitted,zoning';
+  const dpUrl = RALEIGH_BASE + `Development_Plans/FeatureServer/0/query?where=${dpWhere}&outFields=${dpFields}&f=json&resultRecordCount=200`;
+  const r2 = await fetch(dpUrl, {signal: AbortSignal.timeout(10000)});
+  const dpData = await r2.json();
+
+  let count = 0;
+
+  // Rezoning case polygons
+  for(const feat of (data.features || [])) {
+    const a = feat.attributes;
+    const geom = feat.geometry;
+    if(!geom?.rings) continue;
+
+    const latlngs = geom.rings[0].map(([x,y]) => [y,x]);
+    const statusColor = a.STATUS === 'Pending' || a.STATUS === 'In Review' ? '#8E24AA' :
+                        a.STATUS === 'Approved' ? '#2E7D32' : '#6A1B9A';
+    const poly = L.polygon(latlngs, {
+      color: statusColor, weight: 2, fillColor: statusColor, fillOpacity: 0.1
+    });
+    const statusDate = a.StatusDate ? new Date(a.StatusDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    poly.bindPopup(
+      `<span class="p-tag" style="background:${statusColor};color:#fff">REZONING</span>` +
+      `<div class="p-title">${a.ZONE_CASE||''} — ${a.ZON_REQ||'Requested'}</div>` +
+      `<div class="p-notes">${[a.Acres ? a.Acres.toFixed(1)+' acres' : '', a.PrevZoning ? 'From: '+a.PrevZoning : '', a.Location||''].filter(Boolean).join(' · ')}</div>` +
+      `<div class="p-meta">Status: ${a.STATUS||''} · ${statusDate}</div>` +
+      (a.CurrentInfoLink ? `<a class="p-link" href="${a.CurrentInfoLink}" target="_blank">Case details →</a>` : ''),
+      {maxWidth: 260}
+    );
+    // Center marker
+    try {
+      const center = L.polygon(latlngs).getBounds().getCenter();
+      const m = L.marker([center.lat, center.lng], {icon: makeZoningIcon()});
+      m.bindPopup(poly.getPopup().getContent(), {maxWidth:260});
+      lg.addLayer(m);
+    } catch(e){}
+    lg.addLayer(poly);
+    count++;
   }
-  for(const feat of(dpData.features||[])){
-    const a=feat.attributes,geom=feat.geometry;
-    if(!geom?.x||!geom?.y)continue;
-    const submitted=a.submitted?new Date(a.submitted).toLocaleDateString('en-US',{month:'short',year:'numeric'}):'';
-    const m=L.marker([geom.y,geom.x],{icon:makeZoningIcon()});
+
+  // Development plan points
+  for(const feat of (dpData.features || [])) {
+    const a = feat.attributes;
+    const geom = feat.geometry;
+    if(!geom?.x || !geom?.y) continue;
+    const submitted = a.submitted ? new Date(a.submitted).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '';
+    const m = L.marker([geom.y, geom.x], {icon: makeZoningIcon()});
     m.bindPopup(
-      `<span class="p-tag" style="background:#8E24AA;color:#fff">DEV PLAN</span>`+
-      `<div class="p-title">${a.plan_name||a.plan_number||'Development Plan'}</div>`+
-      `<div class="p-notes">${[a.plan_type,a.major_street?'Near '+a.major_street.trim():'',a.acreage?a.acreage.toFixed(1)+' ac':'',a.developer||''].filter(Boolean).join(' · ')}</div>`+
-      `<div class="p-meta">Status: ${a.status||''} · Submitted ${submitted}</div>`+
-      `<div style="margin-top:5px;display:flex;flex-direction:column;gap:3px">`+
-      `<a class="p-link" href="https://raleighnc.gov/permits-development/services/development-plans-rezoning" target="_blank" style="color:#8E24AA">&#128196; Raleigh dev plans portal &rarr;</a>`+
-      `<a class="p-link" href="https://maps.raleighnc.gov/iMAPS/" target="_blank" style="color:#8E24AA">&#128205; Raleigh iMAPS &rarr;</a>`+
-      `</div>`,{maxWidth:280});
-    lg.addLayer(m);count++;
+      `<span class="p-tag" style="background:#8E24AA;color:#fff">DEV PLAN</span>` +
+      `<div class="p-title">${a.plan_name||a.plan_number||'Development Plan'}</div>` +
+      `<div class="p-notes">${[a.plan_type, a.major_street ? 'Near '+a.major_street.trim() : '', a.acreage ? a.acreage.toFixed(1)+' ac' : '', a.developer||''].filter(Boolean).join(' · ')}</div>` +
+      `<div class="p-meta">Status: ${a.status||''} · Submitted ${submitted}</div>`,
+      {maxWidth: 260}
+    );
+    lg.addLayer(m);
+    count++;
   }
+
   setOverlayStatus(`${count} zoning items loaded`);
-  setTimeout(()=>setOverlayStatus(''),3000);
+  setTimeout(() => setOverlayStatus(''), 3000);
   return lg;
 }
 
-const WAKE_BASE='https://maps.wakegov.com/arcgis/rest/services/Property/';
+// ── Toggle handler ──────────────────────────────────────────────
+async function toggleOverlay(type, btn) {
+  const isActive = overlayActive[type];
 
-function setOverlayStatus(msg) {
-  const el = document.getElementById('overlay-status');
-  if(el) el.textContent = msg;
-}
-
-
-function makeDotIcon() {
-  // Orange square outline — DOT project marker
-  return L.divIcon({ className: '',
-    html: `<div style="width:13px;height:13px;border:2.5px solid #FF8C00;background:rgba(255,140,0,0.18);border-radius:2px;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
-    iconSize:[13,13], iconAnchor:[6,6], popupAnchor:[0,-10] });
-}
-
-function makePermitIcon() {
-  // Blue diamond
-  return L.divIcon({ className: '',
-    html: `<div style="width:11px;height:11px;background:#1E88E5;border:2px solid white;border-radius:2px;transform:rotate(45deg);box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
-    iconSize:[13,13], iconAnchor:[6,6], popupAnchor:[0,-10] });
-}
-
-function makeZoningIcon() {
-  // Purple pentagon-ish — use circle with different border
-  return L.divIcon({ className: '',
-    html: `<div style="width:12px;height:12px;background:#8E24AA;border:2.5px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
-    iconSize:[13,13], iconAnchor:[6,6], popupAnchor:[0,-10] });
-}
-
-
-function isCRE(text){
-  const t=(text||'').toLowerCase();
-  return CRE_KW.some(k=>t.includes(k));
-}
-
-function extractTBJLink(text){
-  // Nitter expands t.co links — look for bizjournals URL
-  const m=text.match(/https?:\/\/(?:www\.)?bizjournals\.com\/triangle\/[^\s"<>]+/);
-  if(m)return m[0];
-  // fallback: any t.co or bit.ly link
-  const m2=text.match(/https?:\/\/(?:t\.co|bit\.ly)\/[^\s"<>]+/);
-  return m2?m2[0]:'https://www.bizjournals.com/triangle/news/commercial-real-estate';
-}
-
-
-async function fetchNitterFeed(instance){
-  const url=`${instance}/${TBJ_HANDLE}/rss`;
-  const proxyUrl=CORS_PROXY+encodeURIComponent(url);
-  const resp=await fetch(proxyUrl,{signal:AbortSignal.timeout(8000)});
-  const data=await resp.json();
-  const xml=new DOMParser().parseFromString(data.contents||'','text/xml');
-  const items=xml.querySelectorAll('item');
-  if(!items.length)throw new Error('No items');
-  return Array.from(items).map(item=>{
-    const title=(item.querySelector('title')?.textContent||'').trim();
-    const desc=(item.querySelector('description')?.textContent||'').replace(/<[^>]+>/g,'').trim();
-    const pubDate=(item.querySelector('pubDate')?.textContent||'').trim();
-    const fullText=title+' '+desc;
-    let dateIso='';
-    try{dateIso=new Date(pubDate).toISOString();}catch(e){}
-    return{title,desc,fullText,dateIso,link:extractTBJLink(fullText)};
-  });
-}
-
-
-async function extractAddress(title, notes) {
-  const text = (title + ' ' + (notes||'')).substring(0, 500);
-  // Quick regex pass first — look for common address patterns
-  const addrMatch = text.match(/\d{2,5}\s+[A-Z][a-zA-Z\s]{3,40}(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Boulevard|Blvd|Way|Lane|Ln|Court|Ct|Highway|Hwy|Pike|Parkway|Pkwy)[,.\s]/);
-  if(addrMatch) return addrMatch[0].trim().replace(/[,.]$/, '');
-  return null;
-}
-
-
-async function queueGeocode(story) {
-  return new Promise((resolve) => {
-    geocodeQueue.push({ story, resolve });
-    if(!geocodeRunning) drainGeocodeQueue();
-  });
-}
-
-function renderAll(){
-  activeMarkers.forEach(m=>map.removeLayer(m));
-  activeMarkers=[];
-  const panel=document.getElementById('story-panel');
-  // keep empty-msg if present, clear cards
-  const cards=panel.querySelectorAll('.story-card');
-  cards.forEach(c=>c.remove());
-
-  const filtered=getFiltered();
-  document.getElementById('story-count').textContent=filtered.length+' stories';
-  document.querySelector('.stab[data-tab="stories"]').textContent='Feed ('+filtered.length+')';
-
-  // Show/hide static empty-msg
-  const emptyMsg = document.getElementById('empty-msg');
-  if(emptyMsg) emptyMsg.style.display = filtered.length===0 ? 'block' : 'none';
-
-  filtered.forEach(story=>{
-    const tagKey=story.manual?'manual':story.tag;
-    const tagStyle=TAG_CSS[tagKey]||TAG_CSS.office;
-    const place=findPlace(story.loc);
-    const sourceLabel=story.source==='gmail'?'via TBJ Newsletter':story.source==='twitter'?'via @TriangleBIZJrnl':story.source==='manual'?'manually pinned':'seed data';
-
-    const card=document.createElement('div');
-    card.className='story-card';
-    card.innerHTML=
-      `<span class="stag" style="${tagStyle}">${story.manual?'pinned':story.tag}</span>`+
-      `<div class="stitle">${story.title}</div>`+
-      `<div class="smeta">${story.loc||'Triangle'} &middot; ${fmtDate(story.date)}</div>`+
-      (story._precise ? `<div class="geo-exact">📍 ${story.address}</div>` : '')+
-      (story.notes?`<div class="snotes">${story.notes}</div>`:'')+
-      (story.link?`<a class="slink" href="${story.link}" target="_blank">Read on TBJ &rarr;</a>`:'')+
-      `<div class="ssource">${sourceLabel}</div>`;
-
-    if(place || story._lat){
-      if(!story._lat){story._lat=jitter(place.lat);story._lng=jitter(place.lng);}
-      const precise = story._precise === true;
-      const m=L.marker([story._lat,story._lng],{icon:makeIcon(story.tag,story.manual,precise)}).addTo(map);
-      const geoLabel = precise
-        ? `<div class="geo-exact">📍 ${story.address||'exact address'}</div>`
-        : `<div class="geo-approx">◎ ${story.loc||'Triangle'} area</div>`;
-      m.bindPopup(
-        `<span class="p-tag" style="${tagStyle}">${story.manual?'pinned':story.tag}</span>`+
-        `<div class="p-title">${story.title}</div>`+
-        `<div class="p-meta">${fmtDate(story.date)}</div>`+
-        geoLabel+
-        (story.notes?`<div class="p-notes">${story.notes}</div>`:'')+
-        (story.link?`<a class="p-link" href="${story.link}" target="_blank">Read full story on TBJ &rarr;</a>`:'')+
-        `<div class="p-source">${sourceLabel}</div>`,
-        {maxWidth:260}
-      );
-      m.on('click',()=>{
-        panel.querySelectorAll('.story-card').forEach(c=>c.classList.remove('hl'));
-        card.classList.add('hl');
-        card.scrollIntoView({behavior:'smooth',block:'nearest'});
-      });
-      card.addEventListener('click',()=>{
-        panel.querySelectorAll('.story-card').forEach(c=>c.classList.remove('hl'));
-        card.classList.add('hl');
-        map.setView([story._lat,story._lng],13,{animate:true});
-        m.openPopup();
-      });
-      activeMarkers.push(m);
-    }else if(!story._lat){
-      card.style.opacity='0.55';
-      card.title='No Triangle location detected';
-    }
-    panel.appendChild(card);
-  });
-}
-
-
-function getFiltered(){
-  let s=allStories;
-  if(activeFilter!=='all')s=s.filter(x=>x.tag===activeFilter);
-  if(activeDays!=='all'){
-    const cut=Date.now()-parseInt(activeDays)*86400000;
-    s=s.filter(x=>x.manual||dateMs(x.date)>cut);
-  }
-  return s;
-}
-
-
-async function addStory(){
-  const title=document.getElementById('in-title').value.trim();
-  const url=document.getElementById('in-url').value.trim();
-  const loc=document.getElementById('in-loc').value;
-  const tag=document.getElementById('in-tag').value;
-  const notes=document.getElementById('in-notes').value.trim();
-  const date=document.getElementById('ai-btn').dataset.date||new Date().toISOString().slice(0,10);
-  const address=document.getElementById('in-address').value.trim()||document.getElementById('ai-btn').dataset.address||'';
-  const msg=document.getElementById('add-msg');
-  if(!title){msg.textContent='Headline required.';msg.style.color='var(--red)';return;}
-
-  const story={title,link:url||'https://www.bizjournals.com/triangle/news/commercial-real-estate',
-    notes,tag,loc,date,address,source:'manual',manual:true,_id:Date.now()};
-
-  // Try to geocode to exact address
-  if(address) {
-    msg.textContent='Geocoding address...';msg.style.color='var(--navy-mid)';
-    const geo = await geocodeAddress(address);
-    if(geo && geo.lat > 35.2 && geo.lat < 36.6 && geo.lng > -80.0 && geo.lng < -77.8) {
-      story._lat = geo.lat;
-      story._lng = geo.lng;
-      story._precise = true;
-    }
+  if(isActive) {
+    // Turn off
+    if(overlayLayers[type]) map.removeLayer(overlayLayers[type]);
+    overlayActive[type] = false;
+    btn.classList.remove('active');
+    const legEl = document.getElementById('leg-'+type);
+    if(legEl) legEl.style.display = 'none';
+    setOverlayStatus('');
+    return;
   }
 
-  allStories.unshift(story);
-  const pins=loadPins();pins.unshift(story);savePins(pins);
+  // Turn on
+  overlayActive[type] = true;
+  btn.classList.add('active');
+  const legEl = document.getElementById('leg-'+type);
+  if(legEl) legEl.style.display = 'flex';
 
-  msg.textContent = story._precise ? '📍 Pinned to exact address!' : 'Pinned!';
-  msg.style.color='var(--green)';
-  ['in-title','in-url','in-notes','in-text','in-address'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('ai-status').textContent='';
-  delete document.getElementById('ai-btn').dataset.date;
-  delete document.getElementById('ai-btn').dataset.address;
-  setTimeout(()=>{msg.textContent='';},2500);
-  document.querySelector('.stab[data-tab="stories"]').click();
-  renderAll();
-}
-
-
-async function runExtract(){
-  const text=document.getElementById('in-text').value.trim();
-  const btn=document.getElementById('ai-btn');
-  const status=document.getElementById('ai-status');
-  if(!text){status.textContent='Paste article text first.';status.style.color='var(--red)';return;}
-
-  btn.disabled=true;btn.textContent='Extracting...';
-  status.textContent='Calling Claude...';status.style.color='var(--navy-mid)';
-
-  const locList=PLACES.map(p=>p.name).join(', ');
-  const prompt=`Extract CRE deal info from this Triangle Business Journal article. Return ONLY valid JSON, no markdown.
-
-{
-  "title": "concise deal headline, max 120 chars",
-  "url": "the bizjournals.com article URL if present in text, else empty string",
-  "location": "best match from: ${locList}",
-  "address": "street address if mentioned (e.g. '123 Main St, Cary'), else empty string",
-  "tag": "one of: industrial, development, office, land, retail",
-  "notes": "key facts: SF or acres, price or $/SF, tenant/buyer/seller, address if mentioned — 1-2 sentences",
-  "date": "YYYY-MM-DD if found, else today ${new Date().toISOString().slice(0,10)}"
-}
-
-Article:
-${text.substring(0,4000)}`;
-
-  try{
-    const resp=await fetch(ANTHROPIC_API,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,
-        messages:[{role:'user',content:prompt}]})
-    });
-    const data=await resp.json();
-    const raw=(data.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
-    const p=JSON.parse(raw);
-    if(p.title)document.getElementById('in-title').value=p.title;
-    if(p.url)document.getElementById('in-url').value=p.url;
-    if(p.notes)document.getElementById('in-notes').value=p.notes;
-    if(p.date)document.getElementById('ai-btn').dataset.date=p.date;
-    if(p.address){document.getElementById('ai-btn').dataset.address=p.address;document.getElementById('in-address').value=p.address;}
-    if(p.location){
-      const sel=document.getElementById('in-loc');
-      const opt=Array.from(sel.options).find(o=>o.value===p.location);
-      if(opt)sel.value=p.location;
+  // Load data if not cached
+  if(!overlayLoaded[type]) {
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    try {
+      if(type === 'dot') overlayLayers[type] = await fetchDotLayer();
+      else if(type === 'permits') overlayLayers[type] = await fetchPermitsLayer();
+      else if(type === 'zoning') overlayLayers[type] = await fetchZoningLayer();
+      overlayLoaded[type] = true;
+    } catch(e) {
+      console.error('Overlay load failed:', type, e);
+      setOverlayStatus('⚠ Failed to load ' + type + ' data');
+      overlayActive[type] = false;
+      btn.classList.remove('active');
+      if(legEl) legEl.style.display = 'none';
+      setTimeout(() => setOverlayStatus(''), 3000);
     }
-    if(p.tag){
-      const sel=document.getElementById('in-tag');
-      const opt=Array.from(sel.options).find(o=>o.value===p.tag);
-      if(opt)sel.value=p.tag;
-    }
-    status.textContent='Done — review then hit Pin to Map.';status.style.color='var(--green)';
-    btn.textContent='⚡ Extract & Auto-Fill';btn.disabled=false;
-  }catch(e){
-    status.textContent='Extract failed: '+e.message;status.style.color='var(--red)';
-    btn.textContent='⚡ Extract & Auto-Fill';btn.disabled=false;
+    btn.disabled = false;
+    btn.style.opacity = '';
   }
+
+  if(overlayLayers[type]) overlayLayers[type].addTo(map);
 }
 
-
-        function decodeTBJUrl(b64) {
-          try {
-            const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
-            const decoded = atob(padded);
-            return decoded.split('?')[0]; // strip UTM params
-          } catch(e) { return null; }
-        }
-
-
-
-async function drainGeocodeQueue() {
-  geocodeRunning = true;
-  while(geocodeQueue.length) {
-    const { story, resolve } = geocodeQueue.shift();
-    const addr = await extractAddress(story.title, story.notes);
-    if(addr) {
-      const geo = await geocodeAddress(addr);
-      if(geo) {
-        // Validate it's within Triangle bounding box (rough check)
-        if(geo.lat > 35.2 && geo.lat < 36.6 && geo.lng > -80.0 && geo.lng < -77.8) {
-          resolve({ lat: geo.lat, lng: geo.lng, precise: true, addressUsed: addr });
-          await new Promise(r => setTimeout(r, 1100)); // Nominatim rate limit
-          continue;
-        }
-      }
-    }
-    resolve(null); // fallback to submarket centroid
-  }
-  geocodeRunning = false;
-}
-
-// ── AI Article Geocoder ───────────────────────────────────────
-// Uses Claude to extract address from article text, then Nominatim to resolve coords
-async function aiGeocodeArticle(title, url, existingNotes) {
-  const cacheKey = url || title.substring(0,60);
-  if(aiGeoCache[cacheKey]) return aiGeoCache[cacheKey];
-
-  try {
-    // Fetch article text via allorigins CORS proxy
-    let articleText = title + ' ' + existingNotes;
-    if(url && url.includes('bizjournals.com')) {
-      try {
-        const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
-        const resp = await fetch(proxyUrl, {signal: AbortSignal.timeout(8000)});
-        const data = await resp.json();
-        if(data.contents) {
-          // Strip HTML tags, get plain text
-          const tmp = document.createElement('div');
-          tmp.innerHTML = data.contents;
-          articleText = (tmp.innerText || tmp.textContent || '').substring(0, 3000);
-        }
-      } catch(e) { /* proxy failed, use title only */ }
-    }
-
-    // Ask Claude to extract address and location
-    const locList = PLACES.map(p=>p.name).join(', ');
-    const prompt = `From this Triangle Business Journal article text, extract:
-1. Street address of the property (e.g. "800 CentreGreen Way, Cary" or "1548 E Williams St, Apex") — only if explicitly mentioned
-2. Best submarket match from: ${locList}
-
-Return ONLY valid JSON: {"address": "full street address or empty string", "loc": "submarket name"}
-
-Article title: ${title}
-Article text: ${articleText.substring(0, 2000)}`;
-
-    const resp = await fetch(ANTHROPIC_API, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 150,
-        messages: [{role: 'user', content: prompt}]
-      })
-    });
-    const data = await resp.json();
-    const raw = (data.content?.[0]?.text || '').replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(raw);
-
-    let result = { address: parsed.address||'', loc: parsed.loc||'' };
-
-    // If address found, geocode it
-    if(result.address) {
-      const geo = await geocodeAddress(result.address);
-      if(geo && geo.lat > 35.2 && geo.lat < 36.6 && geo.lng > -80.0 && geo.lng < -77.8) {
-        result.lat = geo.lat;
-        result.lng = geo.lng;
-      }
-    }
-
-    aiGeoCache[cacheKey] = result;
-    return result;
-  } catch(e) {
-    console.warn('aiGeocodeArticle failed:', e.message);
-    return null;
-  }
-}
-
-// ── Auto-Refresh Engine ────────────────────────────────────────
-
-async function toggleOverlay(type,btn){
-  if(overlayActive[type]){
-    if(overlayLayers[type])map.removeLayer(overlayLayers[type]);
-    overlayActive[type]=false;btn.classList.remove('active');
-    const legEl=document.getElementById('leg-'+type);if(legEl)legEl.style.display='none';
-    setOverlayStatus('');return;
-  }
-  overlayActive[type]=true;btn.classList.add('active');
-  const legEl=document.getElementById('leg-'+type);if(legEl)legEl.style.display='flex';
-  if(!overlayLoaded[type]){
-    btn.disabled=true;btn.style.opacity='0.6';
-    try{
-      if(type==='dot')overlayLayers[type]=await fetchDotLayer();
-      else if(type==='permits')overlayLayers[type]=await fetchPermitsLayer();
-      else if(type==='zoning')overlayLayers[type]=await fetchZoningLayer();
-      overlayLoaded[type]=true;
-    }catch(e){
-      console.error('Overlay failed:',type,e);
-      setOverlayStatus('⚠ Failed to load '+type+' data');
-      overlayActive[type]=false;btn.classList.remove('active');
-      if(legEl)legEl.style.display='none';
-      setTimeout(()=>setOverlayStatus(''),3000);
-    }
-    btn.disabled=false;btn.style.opacity='';
-  }
-  if(overlayLayers[type])overlayLayers[type].addTo(map);
-}
 
 // ── Area Intel Engine ─────────────────────────────────────────
 let intelRadiusCircle = null;
@@ -1704,32 +1822,40 @@ async function runAreaIntel(){
   btn.disabled=false;
 }
 
-// ── Boot ───────────────────────────────────────────────────────
-function initMap(){
-  map=L.map('map');
-  map.setView([35.82,-78.80],10);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom:19
-  }).addTo(map);
-}
 
+
+// ── Boot ───────────────────────────────────────────────────────
 function boot(){
   initMap();
+
+  // Location dropdown
   const locSel=document.getElementById('in-loc');
   PLACES.forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=p.name;locSel.appendChild(o);});
+
+  // Load seed + saved pins
   SEED.forEach(s=>allStories.push(Object.assign({},s)));
+  // Load seed news into news tab
   SEED_NEWS.forEach(s=>addNewsStory(s));
   const pins=loadPins();
   const seedTitles=new Set(SEED.map(s=>s.title));
   pins.forEach(p=>{if(!seedTitles.has(p.title))allStories.unshift(p);});
+
+  // Filter buttons
   document.querySelectorAll('.fbtn').forEach(btn=>{
     btn.addEventListener('click',()=>{
       document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');activeFilter=btn.dataset.tag;renderAll();
+      btn.classList.add('active');
+      activeFilter=btn.dataset.tag;
+      renderAll();
     });
   });
-  document.getElementById('date-filter').addEventListener('change',e=>{activeDays=e.target.value;renderAll();});
+
+  // Date filter
+  document.getElementById('date-filter').addEventListener('change',e=>{
+    activeDays=e.target.value;renderAll();
+  });
+
+  // Tabs
   document.querySelectorAll('.stab').forEach(tab=>{
     tab.addEventListener('click',()=>{
       document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
@@ -1742,32 +1868,53 @@ function boot(){
       document.getElementById('intel-panel').style.flexDirection='column';
     });
   });
+
   renderAll();
+  // Start auto-refresh — polls Gmail every 30 min while tab is open
   startAutoRefresh();
 }
 
-// ── News Tab ───────────────────────────────────────────────────
-const newsStories=[];
-function addNewsStory(story){
-  if(newsStories.some(n=>n.title.toLowerCase().substring(0,60)===story.title.toLowerCase().substring(0,60)))return;
-  newsStories.unshift(story);renderNews();updateNewsTabCount();
+// ── News Tab ──────────────────────────────────────────────────
+const newsStories = [];
+
+function addNewsStory(story) {
+  // Dedup by title
+  if(newsStories.some(n => n.title.toLowerCase().substring(0,60) === story.title.toLowerCase().substring(0,60))) return;
+  newsStories.unshift(story);
+  renderNews();
+  updateNewsTabCount();
 }
-function updateNewsTabCount(){
-  const btn=document.querySelector('.stab[data-tab="news"]');
-  if(btn)btn.textContent=newsStories.length>0?`📰 News (${newsStories.length})`:'📰 News';
+
+function updateNewsTabCount() {
+  const btn = document.querySelector('.stab[data-tab="news"]');
+  if(btn) btn.textContent = newsStories.length > 0 ? `📰 News (${newsStories.length})` : '📰 News';
 }
-const TAG_COLORS={industrial:'#d97706',development:'#0369a1',office:'#7c3aed',retail:'#be185d',land:'#15803d',other:'#6b7280'};
-function renderNews(){
-  const panel=document.getElementById('news-panel');
-  const em=document.getElementById('news-empty-msg');
-  if(!newsStories.length){if(em)em.style.display='block';return;}
-  if(em)em.style.display='none';
-  panel.querySelectorAll('.news-card').forEach(c=>c.remove());
-  newsStories.forEach(s=>{
-    const div=document.createElement('div');div.className='news-card';
-    const color=TAG_COLORS[s.tag]||TAG_COLORS.other;
-    const dateStr=s.date?new Date(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
-    div.innerHTML=`<div class="news-meta"><span class="news-badge" style="background:${color}22;color:${color}">${s.tag||'news'}</span>${dateStr}</div><h4>${s.title}</h4>${s.notes?`<div class="news-notes">${s.notes}</div>`:''}${s.link?`<a href="${s.link}" target="_blank">Read on TBJ &rarr;</a>`:''}`;
+
+const TAG_COLORS = {industrial:'#d97706',development:'#0369a1',office:'#7c3aed',retail:'#be185d',land:'#15803d',other:'#6b7280'};
+
+function renderNews() {
+  const panel = document.getElementById('news-panel');
+  const em = document.getElementById('news-empty-msg');
+  if(!newsStories.length) { if(em) em.style.display='block'; return; }
+  if(em) em.style.display='none';
+
+  // Remove existing cards
+  panel.querySelectorAll('.news-card').forEach(c => c.remove());
+
+  newsStories.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'news-card';
+    const color = TAG_COLORS[s.tag] || TAG_COLORS.other;
+    const dateStr = s.date ? new Date(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    div.innerHTML = `
+      <div class="news-meta">
+        <span class="news-badge" style="background:${color}22;color:${color}">${s.tag||'news'}</span>
+        ${dateStr}
+      </div>
+      <h4>${s.title}</h4>
+      ${s.notes ? `<div class="news-notes">${s.notes}</div>` : ''}
+      ${s.link ? `<a href="${s.link}" target="_blank">Read on TBJ →</a>` : ''}
+    `;
     panel.appendChild(div);
   });
 }
