@@ -421,11 +421,20 @@ let map, allStories=[], activeMarkers=[], activeFilter='all', activeDays='all';
 function jitter(v){return v+(Math.random()-0.5)*0.014;}
 function fmtDate(ds){try{return new Date(ds).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}catch(e){return ds||'';}}
 function dateMs(ds){try{if(!ds)return 0;const p=ds.split('-').map(Number);return new Date(p[0],p[1]-1,p[2],12,0,0).getTime();}catch(e){return 0;}}
+// Locations too vague to pin — these go to News tab instead
+const VAGUE_LOCS = new Set(['triangle','nc','north carolina','state','regional',
+  'raleigh area','triangle area','greater triangle','raleigh-durham','research triangle',
+  'rtp area','national','coastal nc','eastern nc','western nc','charlotte']);
+
 function findPlace(loc){
   if(!loc)return null;
+  // Reject vague/generic location strings
+  if(VAGUE_LOCS.has(loc.toLowerCase().trim()))return null;
   return PLACES.find(p=>p.name.toLowerCase()===loc.toLowerCase())||
-         PLACES.find(p=>loc.toLowerCase().includes(p.name.toLowerCase()))||
-         PLACES.find(p=>p.name.toLowerCase().includes(loc.toLowerCase()));
+         PLACES.find(p=>loc.toLowerCase()===p.name.toLowerCase())||
+         PLACES.find(p=>loc.toLowerCase().includes(p.name.toLowerCase())&&
+                        p.name.split(' ').every(w=>loc.toLowerCase().includes(w.toLowerCase())))||
+         PLACES.find(p=>p.name.toLowerCase()===loc.toLowerCase().replace(/\s*(county|area|corridor)\s*/i,'').trim());
 }
 function makeIcon(tag,isManual,precise){
   const c=isManual?COLORS.manual:(COLORS[tag]||'#555');
@@ -791,13 +800,16 @@ async function refreshFeed(isAuto=false){
           const isBreaking=!!(rawMatch&&rawMatch.isBreaking)||isTroyer;
           const link='https://www.bizjournals.com/triangle';
           const dispTitle=(isBreaking?'\ud83d\udea8 ':'')+ds.title.substring(0,160);
-          if(detectedLoc||preciseLat){
+          // Only pin if we have a SPECIFIC pinnable location (in PLACES) or precise geocode
+          const pinnableLoc = preciseLat ? detectedLoc : (detectedLoc && findPlace(detectedLoc) ? detectedLoc : null);
+          if(pinnableLoc || preciseLat){
             const story={title:dispTitle,link,notes:ds.notes||'',
-              tag:ds.tag||detectTag(ds.title),loc:detectedLoc||'Triangle',
+              tag:ds.tag||detectTag(ds.title),loc:pinnableLoc||detectedLoc||'Triangle',
               date:dateIso,source:'gmail',manual:false,address:storyAddress};
             if(preciseLat){story._lat=preciseLat;story._lng=preciseLng;story._precise=true;}
             allStories.unshift(story);added++;
           }else{
+            // No specific location — goes to News tab only, no map pin
             addNewsStory({title:dispTitle,link,notes:ds.notes||'',
               tag:ds.tag||detectTag(ds.title),date:dateIso});
           }
@@ -1875,7 +1887,14 @@ function boot(){
   PLACES.forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=p.name;locSel.appendChild(o);});
 
   // Load seed + saved pins
-  SEED.forEach(s=>allStories.push(Object.assign({},s)));
+  SEED.forEach(s=>{
+    // Only add to map if location is pinnable; otherwise send to news tab
+    if(s.loc && findPlace(s.loc)){
+      allStories.push(Object.assign({},s));
+    } else {
+      addNewsStory(s);
+    }
+  });
   // Load seed news into news tab
   SEED_NEWS.forEach(s=>addNewsStory(s));
   const pins=loadPins();
