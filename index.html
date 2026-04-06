@@ -48,10 +48,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
 #overlay-label{font-size:10px;color:rgba(255,255,255,0.4);font-family:'DM Mono',monospace;white-space:nowrap;margin-right:2px;text-transform:uppercase;letter-spacing:0.06em}
 #overlay-filters{display:none;align-items:center;gap:6px;flex-wrap:wrap;padding:4px 0;border-top:1px solid rgba(255,255,255,0.1);margin-top:4px}
 #overlay-filters.visible{display:flex}
-#overlay-filters label{font-size:9px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
-.ovl-filter-select{font-size:10px;padding:2px 6px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.85);cursor:pointer;font-family:'DM Sans',sans-serif}
+#overlay-filters label{font-size:9px;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;font-weight:600}
+.ovl-filter-select{font-size:10px;padding:2px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#111;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500}
 .ovl-filter-select:focus{outline:none;border-color:rgba(255,255,255,0.4)}
-.ovl-filter-reset{font-size:9px;padding:1px 7px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.4);cursor:pointer}
+.ovl-filter-reset{font-size:9px;padding:2px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-weight:500}
 .ovl-filter-reset:hover{color:#fff;border-color:rgba(255,255,255,0.4)}
 .ovl-btn{font-size:10px;padding:2px 10px;border-radius:12px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:rgba(255,255,255,0.5);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.12s;white-space:nowrap;display:flex;align-items:center;gap:5px}
 .ovl-btn:hover{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8)}
@@ -208,8 +208,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
         <select class="ovl-filter-select" id="pf-type" onchange="applyOverlayFilters()">
           <option value="all">All</option>
           <option value="New">New Construction</option>
-          <option value="Addition">Addition</option>
-          <option value="Alteration">Alteration</option>
+          <option value="Additions">Addition / Expansion</option>
+          <option value="Alteration">Alteration / Fit-Out</option>
           <option value="Demolition">Demolition</option>
         </select>
         <label>Status</label>
@@ -249,11 +249,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
         <label>Type</label>
         <select class="ovl-filter-select" id="zf-type" onchange="applyOverlayFilters()">
           <option value="all">All</option>
-          <option value="General">General Rezoning</option>
-          <option value="Conditional">Conditional</option>
+          <option value="Rezoning-General">General Rezoning</option>
+          <option value="Rezoning-Conditional">Conditional Rezoning</option>
           <option value="Text Amendment">Text Amendment</option>
-          <option value="Special Use">Special Use</option>
-          <option value="Development Plan">Dev Plans</option>
+          <option value="Special Use">Special Use Permit</option>
+          <option value="Development Plan">Dev Plans Only</option>
         </select>
         <label>Since</label>
         <select class="ovl-filter-select" id="zf-days" onchange="applyOverlayFilters()">
@@ -1535,8 +1535,9 @@ async function fetchPermitsLayer() {
     // iMAPS link using address
     const imapsSearch = addr ? `https://maps.raleighnc.gov/iMAPS/?q=${encodeURIComponent(addr)}` : null;
     // City permit portal direct link
+    // Raleigh permit portal — search by permit number
     const permitLink = a.permitnum
-      ? `https://aca-prod.accela.com/RALEIGH/Cap/CapDetail.aspx?alt_id=${encodeURIComponent(a.permitnum)}`
+      ? `https://permitportal.raleighnc.gov/portal/#!/search?searchText=${encodeURIComponent(a.permitnum)}&searchType=permitNumber`
       : null;
 
     const popupHtml =
@@ -1777,7 +1778,7 @@ function applyPermitFilters() {
     if(statusF === 'issued' && isPending) return;
     if(statusF === 'pending' && !isPending) return;
     // Type filter
-    if(typeF !== 'all' && (a.workclassmapped||'').toLowerCase() !== typeF.toLowerCase()) return;
+    if(typeF !== 'all' && !(a.workclassmapped||'').toLowerCase().startsWith(typeF.toLowerCase())) return;
     // Cost filter
     if(costF && (a.estprojectcost||0) < costF) return;
     // Date filter
@@ -1789,7 +1790,7 @@ function applyPermitFilters() {
     const addr = [a.originaladdress1, a.originalcity].filter(Boolean).join(', ');
     const color = isPending ? '#E65100' : '#1E88E5';
     const label = isPending ? 'PERMIT IN REVIEW' : 'PERMIT ISSUED';
-    const permitLink = a.permitnum ? `https://aca-prod.accela.com/RALEIGH/Cap/CapDetail.aspx?alt_id=${encodeURIComponent(a.permitnum)}` : null;
+    const permitLink = a.permitnum ? `https://permitportal.raleighnc.gov/portal/#!/search?searchText=${encodeURIComponent(a.permitnum)}&searchType=permitNumber` : null;
     const imapsLink = addr ? `https://maps.raleighnc.gov/iMAPS/?q=${encodeURIComponent(addr)}` : null;
 
     const html =
@@ -1840,7 +1841,8 @@ function applyZoningFilters() {
     if(statusF !== 'all' && a.STATUS !== statusF) continue;
     if(typeF !== 'all' && typeF !== 'Development Plan') {
       const ct = (a.CASE_TYPE||'').toLowerCase();
-      if(!ct.includes(typeF.toLowerCase())) continue;
+      // Match on key part: "rezoning-general" matches "Rezoning-General", etc.
+      if(!ct.includes(typeF.toLowerCase().replace('rezoning-',''))) continue;
     }
     if(typeF === 'Development Plan') continue; // dev plans handled separately
     if(cutoff && a.StatusDate && a.StatusDate < cutoff) continue;
