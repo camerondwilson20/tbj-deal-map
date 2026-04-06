@@ -46,6 +46,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
 /* overlay toggles */
 #overlay-bar{display:flex;align-items:center;gap:6px;padding:5px 14px;background:#0a1c30;border-bottom:1px solid rgba(201,168,76,0.2);flex-shrink:0;flex-wrap:wrap}
 #overlay-label{font-size:10px;color:rgba(255,255,255,0.4);font-family:'DM Mono',monospace;white-space:nowrap;margin-right:2px;text-transform:uppercase;letter-spacing:0.06em}
+#overlay-filters{display:none;align-items:center;gap:6px;flex-wrap:wrap;padding:4px 0;border-top:1px solid rgba(255,255,255,0.1);margin-top:4px}
+#overlay-filters.visible{display:flex}
+#overlay-filters label{font-size:9px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.ovl-filter-select{font-size:10px;padding:2px 6px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.85);cursor:pointer;font-family:'DM Sans',sans-serif}
+.ovl-filter-select:focus{outline:none;border-color:rgba(255,255,255,0.4)}
+.ovl-filter-reset{font-size:9px;padding:1px 7px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.4);cursor:pointer}
+.ovl-filter-reset:hover{color:#fff;border-color:rgba(255,255,255,0.4)}
 .ovl-btn{font-size:10px;padding:2px 10px;border-radius:12px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:rgba(255,255,255,0.5);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.12s;white-space:nowrap;display:flex;align-items:center;gap:5px}
 .ovl-btn:hover{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8)}
 .ovl-btn.active{color:#fff;border-color:currentColor}
@@ -194,6 +201,79 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
       <span class="ovl-dot" style="background:#8E24AA"></span> Zoning / Rezoning
     </button>
     <span id="overlay-status"></span>
+    <div id="overlay-filters">
+      <!-- Permit filters -->
+      <div id="pf-filters" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+        <label>Type</label>
+        <select class="ovl-filter-select" id="pf-type" onchange="applyOverlayFilters()">
+          <option value="all">All</option>
+          <option value="New">New Construction</option>
+          <option value="Addition">Addition</option>
+          <option value="Alteration">Alteration</option>
+          <option value="Demolition">Demolition</option>
+        </select>
+        <label>Status</label>
+        <select class="ovl-filter-select" id="pf-status" onchange="applyOverlayFilters()">
+          <option value="all">All</option>
+          <option value="issued">Issued</option>
+          <option value="pending">In Review</option>
+        </select>
+        <label>Cost</label>
+        <select class="ovl-filter-select" id="pf-cost" onchange="applyOverlayFilters()">
+          <option value="0">Any</option>
+          <option value="500000">$500K+</option>
+          <option value="1000000">$1M+</option>
+          <option value="5000000">$5M+</option>
+          <option value="10000000">$10M+</option>
+        </select>
+        <label>Days</label>
+        <select class="ovl-filter-select" id="pf-days" onchange="applyOverlayFilters()">
+          <option value="0">All</option>
+          <option value="7">Last 7d</option>
+          <option value="14">Last 14d</option>
+          <option value="31">Last 31d</option>
+        </select>
+        <button class="ovl-filter-reset" onclick="resetOverlayFilters('permits')">Reset</button>
+      </div>
+      <!-- Zoning filters -->
+      <div id="zf-filters" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+        <label>Status</label>
+        <select class="ovl-filter-select" id="zf-status" onchange="applyOverlayFilters()">
+          <option value="all">All</option>
+          <option value="Pending">Pending</option>
+          <option value="In Review">In Review</option>
+          <option value="Active">Active</option>
+          <option value="Approved">Approved</option>
+          <option value="Filed">Filed</option>
+        </select>
+        <label>Type</label>
+        <select class="ovl-filter-select" id="zf-type" onchange="applyOverlayFilters()">
+          <option value="all">All</option>
+          <option value="General">General Rezoning</option>
+          <option value="Conditional">Conditional</option>
+          <option value="Text Amendment">Text Amendment</option>
+          <option value="Special Use">Special Use</option>
+          <option value="Development Plan">Dev Plans</option>
+        </select>
+        <label>Since</label>
+        <select class="ovl-filter-select" id="zf-days" onchange="applyOverlayFilters()">
+          <option value="0">All</option>
+          <option value="90">90 days</option>
+          <option value="180">6 months</option>
+          <option value="365">1 year</option>
+          <option value="730">2 years</option>
+        </select>
+        <label>Min Acres</label>
+        <select class="ovl-filter-select" id="zf-acres" onchange="applyOverlayFilters()">
+          <option value="0">Any</option>
+          <option value="1">1+ ac</option>
+          <option value="5">5+ ac</option>
+          <option value="10">10+ ac</option>
+          <option value="25">25+ ac</option>
+        </select>
+        <button class="ovl-filter-reset" onclick="resetOverlayFilters('zoning')">Reset</button>
+      </div>
+    </div>
   </div>
 
   <div id="main">
@@ -1483,6 +1563,11 @@ async function fetchPermitsLayer() {
     count++;
   };
 
+  // Store raw data for filter re-render
+  overlayRawData.permits = {
+    issued: (issuedData.features||[]).map(f=>f.attributes),
+    pending: (pendData.features||[]).map(f=>f.attributes)
+  };
   for(const f of (issuedData.features||[])) addPermitPin(f.attributes, false);
   for(const f of (pendData.features||[])) addPermitPin(f.attributes, true);
 
@@ -1523,6 +1608,8 @@ async function fetchZoningLayer() {
     s==='Approved' ? '#2E7D32' : '#6A1B9A';
 
   let count = 0;
+  const zoningFeats = [];  // for filter re-render
+  const dpFeats = [];
 
   // Rezoning case polygons + centroid pins
   for(const feat of (zData.features||[])) {
@@ -1571,6 +1658,7 @@ async function fetchZoningLayer() {
       const m = L.marker([ctr.lat, ctr.lng], {icon: makeZoningIcon()});
       m.bindPopup(popupHtml, {maxWidth:280});
       lg.addLayer(m);
+      zoningFeats.push({a, latlngs, ctr});  // store for filter
       count++;
     } catch(e){}
   }
@@ -1610,25 +1698,216 @@ async function fetchZoningLayer() {
     const m = L.marker([lat,lng], {icon:makeZoningIcon()});
     m.bindPopup(popupHtml, {maxWidth:280});
     lg.addLayer(m);
+    dpFeats.push({a, lat, lng});  // store for filter
     count++;
   }
 
+  // Store processed data for filter re-render
+  overlayRawData.zoning = { rezoning: zoningFeats, devplans: dpFeats };
   setTimeout(()=>setOverlayStatus(''),3000);
   setOverlayStatus(`✓ ${count} zoning/planning cases loaded`);
   return lg;
+}
+
+// ── Overlay filter state ──────────────────────────────────────────────────
+// Store raw feature data so filters can re-render without refetching
+const overlayRawData = { permits: null, zoning: null };
+
+function showOverlayFilters(type) {
+  const bar = document.getElementById('overlay-filters');
+  const pfDiv = document.getElementById('pf-filters');
+  const zfDiv = document.getElementById('zf-filters');
+  if(type === 'permits') {
+    bar.classList.add('visible');
+    pfDiv.style.display = 'flex';
+    zfDiv.style.display = 'none';
+  } else if(type === 'zoning') {
+    bar.classList.add('visible');
+    pfDiv.style.display = 'none';
+    zfDiv.style.display = 'flex';
+  } else {
+    bar.classList.remove('visible');
+    pfDiv.style.display = 'none';
+    zfDiv.style.display = 'none';
+  }
+}
+
+function resetOverlayFilters(type) {
+  if(type === 'permits') {
+    document.getElementById('pf-type').value = 'all';
+    document.getElementById('pf-status').value = 'all';
+    document.getElementById('pf-cost').value = '0';
+    document.getElementById('pf-days').value = '0';
+  } else {
+    document.getElementById('zf-status').value = 'all';
+    document.getElementById('zf-type').value = 'all';
+    document.getElementById('zf-days').value = '0';
+    document.getElementById('zf-acres').value = '0';
+  }
+  applyOverlayFilters();
+}
+
+function applyOverlayFilters() {
+  // Determine which overlay is active
+  if(overlayActive.permits && overlayRawData.permits) {
+    applyPermitFilters();
+  } else if(overlayActive.zoning && overlayRawData.zoning) {
+    applyZoningFilters();
+  }
+}
+
+function applyPermitFilters() {
+  const typeF  = document.getElementById('pf-type').value;
+  const statusF = document.getElementById('pf-status').value;
+  const costF  = parseInt(document.getElementById('pf-cost').value) || 0;
+  const daysF  = parseInt(document.getElementById('pf-days').value) || 0;
+  const cutoff = daysF ? Date.now() - daysF * 86400000 : 0;
+
+  if(overlayLayers.permits) map.removeLayer(overlayLayers.permits);
+  const lg = L.layerGroup();
+  const {issued, pending} = overlayRawData.permits;
+
+  const fmtCost = v => v>=1000000?'$'+(v/1000000).toFixed(1)+'M':v>=1000?'$'+(v/1000).toFixed(0)+'K':'$'+v;
+
+  const addPin = (a, isPending) => {
+    const lat = parseFloat(a.latitude_perm), lng = parseFloat(a.longitude_perm);
+    if(!lat||!lng||lat<33||lat>37||lng<-85||lng>-75) return;
+
+    // Status filter
+    if(statusF === 'issued' && isPending) return;
+    if(statusF === 'pending' && !isPending) return;
+    // Type filter
+    if(typeF !== 'all' && (a.workclassmapped||'').toLowerCase() !== typeF.toLowerCase()) return;
+    // Cost filter
+    if(costF && (a.estprojectcost||0) < costF) return;
+    // Date filter
+    if(cutoff && a.issueddate && a.issueddate < cutoff) return;
+
+    const cost = a.estprojectcost ? fmtCost(a.estprojectcost) : '';
+    const sqft = a.totalsqft ? a.totalsqft.toLocaleString()+' SF' : '';
+    const dt = a.issueddate ? new Date(a.issueddate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    const addr = [a.originaladdress1, a.originalcity].filter(Boolean).join(', ');
+    const color = isPending ? '#E65100' : '#1E88E5';
+    const label = isPending ? 'PERMIT IN REVIEW' : 'PERMIT ISSUED';
+    const permitLink = a.permitnum ? `https://aca-prod.accela.com/RALEIGH/Cap/CapDetail.aspx?alt_id=${encodeURIComponent(a.permitnum)}` : null;
+    const imapsLink = addr ? `https://maps.raleighnc.gov/iMAPS/?q=${encodeURIComponent(addr)}` : null;
+
+    const html =
+      `<span class="p-tag" style="background:${color};color:#fff">${label}</span>` +
+      `<div class="p-title">${a.projectname||a.description||'Building Permit'}</div>` +
+      (addr?`<div class="p-meta">📍 ${addr}</div>`:'') +
+      `<div class="p-notes">${[cost,sqft,a.workclassmapped||'',a.landusedescription||''].filter(Boolean).join(' · ')}</div>` +
+      (a.permitnum?`<div class="p-meta">Permit #${a.permitnum}</div>`:'') +
+      (dt?`<div class="p-meta">${isPending?'Filed':'Issued'}: ${dt}</div>`:'') +
+      `<div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">` +
+      (permitLink?`<a class="p-link" href="${permitLink}" target="_blank">📋 View permit →</a>`:'') +
+      (imapsLink?`<a class="p-link" href="${imapsLink}" target="_blank">🗺 View in iMAPS →</a>`:'') +
+      `</div>`;
+
+    const icon = isPending
+      ? L.divIcon({className:'',html:'<div style="width:12px;height:12px;background:#E65100;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>',iconSize:[12,12],iconAnchor:[6,6]})
+      : makePermitIcon();
+    L.marker([lat,lng],{icon}).bindPopup(html,{maxWidth:280}).addTo(lg);
+  };
+
+  (issued||[]).forEach(a=>addPin(a,false));
+  (pending||[]).forEach(a=>addPin(a,true));
+
+  overlayLayers.permits = lg;
+  lg.addTo(map);
+  const count = lg.getLayers().length;
+  setOverlayStatus(`✓ ${count} permits (filtered)`);
+  setTimeout(()=>setOverlayStatus(''),2000);
+}
+
+function applyZoningFilters() {
+  const statusF = document.getElementById('zf-status').value;
+  const typeF   = document.getElementById('zf-type').value;
+  const daysF   = parseInt(document.getElementById('zf-days').value) || 0;
+  const acresF  = parseFloat(document.getElementById('zf-acres').value) || 0;
+  const cutoff  = daysF ? Date.now() - daysF * 86400000 : 0;
+
+  if(overlayLayers.zoning) map.removeLayer(overlayLayers.zoning);
+  const lg = L.layerGroup();
+  const {rezoning, devplans} = overlayRawData.zoning;
+
+  const statusColor = s => s==='Pending'||s==='In Review'||s==='Filed'?'#8E24AA':s==='Approved'?'#2E7D32':'#6A1B9A';
+
+  for(const feat of (rezoning||[])) {
+    const a = feat.a, latlngs = feat.latlngs, ctr = feat.ctr;
+    if(!latlngs||!ctr) continue;
+
+    if(statusF !== 'all' && a.STATUS !== statusF) continue;
+    if(typeF !== 'all' && typeF !== 'Development Plan') {
+      const ct = (a.CASE_TYPE||'').toLowerCase();
+      if(!ct.includes(typeF.toLowerCase())) continue;
+    }
+    if(typeF === 'Development Plan') continue; // dev plans handled separately
+    if(cutoff && a.StatusDate && a.StatusDate < cutoff) continue;
+    if(acresF && (a.Acres||0) < acresF) continue;
+
+    const sc = statusColor(a.STATUS);
+    const dt = a.StatusDate ? new Date(a.StatusDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    const caseLink = a.EG_Link||a.CurrentInfoLink||null;
+    const imapsLink = a.IMAPS_Link||null;
+
+    const html =
+      `<span class="p-tag" style="background:${sc};color:#fff">${a.STATUS||'REZONING'}</span>` +
+      `<div class="p-title">${a.ZONE_CASE||''} ${a.ZON_REQ?'→ '+a.ZON_REQ:''}</div>` +
+      (a.Location?`<div class="p-meta">📍 ${a.Location}</div>`:'') +
+      `<div class="p-notes">${[(a.Acres||0).toFixed(1)+' ac',a.PrevZoning?'From '+a.PrevZoning:'',a.CASE_TYPE||''].filter(Boolean).join(' · ')}</div>` +
+      (dt?`<div class="p-meta">Updated: ${dt}</div>`:'') +
+      `<div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">` +
+      (caseLink?`<a class="p-link" href="${caseLink}" target="_blank">📋 Case details →</a>`:'') +
+      (imapsLink?`<a class="p-link" href="${imapsLink}" target="_blank">🗺 View in iMAPS →</a>`:'') +
+      `<a class="p-link" href="https://engage.raleighnc.gov/rezoning" target="_blank">🔔 All active rezonings →</a>` +
+      `</div>`;
+
+    const poly = L.polygon(latlngs,{color:sc,weight:2,fillColor:sc,fillOpacity:0.15});
+    poly.bindPopup(html,{maxWidth:280});
+    lg.addLayer(poly);
+    L.marker([ctr.lat,ctr.lng],{icon:makeZoningIcon()}).bindPopup(html,{maxWidth:280}).addTo(lg);
+  }
+
+  // Dev plans (only when type filter is 'all' or 'Development Plan')
+  if(typeF === 'all' || typeF === 'Development Plan') {
+    for(const feat of (devplans||[])) {
+      const a = feat.a, lat = feat.lat, lng = feat.lng;
+      if(!lat||!lng) continue;
+      if(cutoff && a.submitted && a.submitted < cutoff) continue;
+
+      const dt = a.submitted ? new Date(a.submitted).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '';
+      const html =
+        `<span class="p-tag" style="background:#8E24AA;color:#fff">DEV PLAN</span>` +
+        `<div class="p-title">${a.plan_name||a.plan_number||'Development Plan'}</div>` +
+        (a.major_street?`<div class="p-meta">📍 ${a.major_street}</div>`:'') +
+        `<div class="p-notes">${[a.plan_type||'',a.acreage?(a.acreage.toFixed(1)+' ac'):'',a.zoning||''].filter(Boolean).join(' · ')}</div>` +
+        (a.developer?`<div class="p-meta">Developer: ${a.developer}</div>`:'') +
+        (dt?`<div class="p-meta">Submitted: ${dt} · ${a.status||''}</div>`:'') +
+        `<div style="margin-top:6px"><a class="p-link" href="https://engage.raleighnc.gov/rezoning" target="_blank">🔔 View active cases →</a></div>`;
+      L.marker([lat,lng],{icon:makeZoningIcon()}).bindPopup(html,{maxWidth:280}).addTo(lg);
+    }
+  }
+
+  overlayLayers.zoning = lg;
+  lg.addTo(map);
+  const count = lg.getLayers().length;
+  setOverlayStatus(`✓ ${count} zoning features (filtered)`);
+  setTimeout(()=>setOverlayStatus(''),2000);
 }
 
 async function toggleOverlay(type, btn) {
   const isActive = overlayActive[type];
 
   if(isActive) {
-    // Turn off
+    // Turn off — hide layer AND filter panel
     if(overlayLayers[type]) map.removeLayer(overlayLayers[type]);
     overlayActive[type] = false;
     btn.classList.remove('active');
     const legEl = document.getElementById('leg-'+type);
     if(legEl) legEl.style.display = 'none';
     setOverlayStatus('');
+    showOverlayFilters(null); // hide all filter panels
     return;
   }
 
@@ -1647,6 +1926,7 @@ async function toggleOverlay(type, btn) {
       else if(type === 'permits') overlayLayers[type] = await fetchPermitsLayer();
       else if(type === 'zoning') overlayLayers[type] = await fetchZoningLayer();
       overlayLoaded[type] = true;
+      if(type==='permits'||type==='zoning') showOverlayFilters(type);
     } catch(e) {
       console.error('Overlay load failed:', type, e);
       setOverlayStatus('⚠ Failed to load ' + type + ' data');
