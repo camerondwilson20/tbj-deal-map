@@ -1411,45 +1411,83 @@ async function fetchDotLayer(){
 async function fetchPermitsLayer() {
   setOverlayStatus('Loading filed permits...');
   const lg = L.layerGroup();
-
-  // Commercial permits issued in the last 31 days — filter to non-residential
-  const where = encodeURIComponent("permitclassmapped='Non-Residential' AND latitude_perm IS NOT NULL");
-  const fields = 'permitnum,projectname,description,originaladdress1,originalcity,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,permitclassmapped,landusedescription';
-  const url = RALEIGH_BASE + `Building_Permits_Past_31_Days/FeatureServer/0/query?where=${where}&outFields=${fields}&f=json&resultRecordCount=500&orderByFields=issueddate+DESC`;
-  const r = await fetch(url, {signal: AbortSignal.timeout(10000)});
-  const data = await r.json();
-
   let count = 0;
-  for(const feat of (data.features || [])) {
-    const a = feat.attributes;
-    const lat = a.latitude_perm, lng = a.longitude_perm;
-    if(!lat || !lng) continue;
-    // Skip residential and tiny permits
-    if((a.estprojectcost || 0) < 50000 && !a.totalsqft) continue;
 
-    const cost = a.estprojectcost ? '$' + (a.estprojectcost >= 1e6
-      ? (a.estprojectcost/1e6).toFixed(1)+'M'
-      : (a.estprojectcost/1000).toFixed(0)+'K') : '';
-    const sqft = a.totalsqft ? `${a.totalsqft.toLocaleString()} SF` : '';
-    const issued = a.issueddate ? new Date(a.issueddate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+  // ── Issued permits (last 31 days, non-residential, $100K+) ───────────────
+  const issuedWhere = encodeURIComponent(
+    "permitclassmapped='Non-Residential' AND latitude_perm IS NOT NULL AND estprojectcost>=100000"
+  );
+  const issuedFields = 'permitnum,projectname,description,originaladdress1,originalcity,' +
+    'estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,landusedescription';
+  const issuedUrl = RALEIGH_BASE +
+    `Building_Permits_Past_31_Days/FeatureServer/0/query?where=${issuedWhere}` +
+    `&outFields=${issuedFields}&f=json&resultRecordCount=500&orderByFields=issueddate+DESC`;
+
+  // ── Pending permits (non-residential, New construction, $250K+, since 2023) ──
+  const pendWhere = encodeURIComponent(
+    "permitclassmapped='Non-Residential' AND workclassmapped='New' AND latitude_perm IS NOT NULL AND estprojectcost>=250000"
+  );
+  const pendFields = issuedFields;
+  const pendUrl = RALEIGH_BASE +
+    `Building_Permits_Pending/FeatureServer/0/query?where=${pendWhere}` +
+    `&outFields=${pendFields}&f=json&resultRecordCount=300&orderByFields=issueddate+DESC`;
+
+  const [issuedData, pendData] = await Promise.all([
+    fetch(issuedUrl, {signal:AbortSignal.timeout(12000)}).then(r=>r.json()).catch(()=>({features:[]})),
+    fetch(pendUrl, {signal:AbortSignal.timeout(12000)}).then(r=>r.json()).catch(()=>({features:[]})),
+  ]);
+
+  const fmtCost = v => v>=1000000 ? '$'+(v/1000000).toFixed(1)+'M' : v>=1000 ? '$'+(v/1000).toFixed(0)+'K' : '$'+v;
+  const fmtSqft = v => v ? v.toLocaleString()+' SF' : '';
+
+  const addPermitPin = (a, isPending) => {
+    const lat = parseFloat(a.latitude_perm);
+    const lng = parseFloat(a.longitude_perm);
+    if(!lat || !lng || lat<33||lat>37||lng<-85||lng>-75) return;
+
+    const cost = a.estprojectcost ? fmtCost(a.estprojectcost) : '';
+    const sqft = a.totalsqft ? fmtSqft(a.totalsqft) : '';
+    const dt = a.issueddate ? new Date(a.issueddate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
     const addr = [a.originaladdress1, a.originalcity].filter(Boolean).join(', ');
+    const label = isPending ? 'PERMIT IN REVIEW' : 'PERMIT ISSUED';
+    const color = isPending ? '#E65100' : '#1E88E5';
 
-    const m = L.marker([lat, lng], {icon: makePermitIcon()});
-    m.bindPopup(
-      `<span class="p-tag" style="background:#1E88E5;color:#fff">PERMIT</span>` +
-      `<div class="p-title">${a.projectname || a.description || 'Building Permit'}</div>` +
-      `<div class="p-meta">${addr}</div>` +
-      `<div class="p-notes">${[a.workclassmapped, a.landusedescription, sqft, cost].filter(Boolean).join(' · ')}</div>` +
-      `<div class="p-meta">Issued ${issued} · ${a.statuscurrentmapped||''}</div>` +
-      `<div class="p-source">${a.permitnum||''}</div>`,
-      {maxWidth: 260}
-    );
+    // iMAPS link using address
+    const imapsSearch = addr ? `https://maps.raleighnc.gov/iMAPS/?q=${encodeURIComponent(addr)}` : null;
+    // City permit portal direct link
+    const permitLink = a.permitnum
+      ? `https://aca-prod.accela.com/RALEIGH/Cap/CapDetail.aspx?alt_id=${encodeURIComponent(a.permitnum)}`
+      : null;
+
+    const popupHtml =
+      `<span class="p-tag" style="background:${color};color:#fff">${label}</span>` +
+      `<div class="p-title">${a.projectname||a.description||'Building Permit'}</div>` +
+      (addr ? `<div class="p-meta">📍 ${addr}</div>` : '') +
+      `<div class="p-notes">` +
+        [cost, sqft, a.workclassmapped||'', a.landusedescription||''].filter(Boolean).join(' · ') +
+      `</div>` +
+      (a.permitnum ? `<div class="p-meta">Permit #${a.permitnum}</div>` : '') +
+      (dt ? `<div class="p-meta">${isPending?'Filed':'Issued'}: ${dt}</div>` : '') +
+      `<div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">` +
+      (permitLink ? `<a class="p-link" href="${permitLink}" target="_blank">📋 View permit →</a>` : '') +
+      (imapsSearch ? `<a class="p-link" href="${imapsSearch}" target="_blank">🗺 View in iMAPS →</a>` : '') +
+      `</div>`;
+
+    const icon = isPending
+      ? L.divIcon({className:'',html:'<div style="width:12px;height:12px;background:#E65100;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>',iconSize:[12,12],iconAnchor:[6,6]})
+      : makePermitIcon();
+
+    const m = L.marker([lat,lng], {icon});
+    m.bindPopup(popupHtml, {maxWidth:280});
     lg.addLayer(m);
     count++;
-  }
+  };
 
-  setOverlayStatus(`${count} commercial permits loaded`);
-  setTimeout(() => setOverlayStatus(''), 3000);
+  for(const f of (issuedData.features||[])) addPermitPin(f.attributes, false);
+  for(const f of (pendData.features||[])) addPermitPin(f.attributes, true);
+
+  setOverlayStatus(`✓ ${count} permits loaded`);
+  setTimeout(()=>setOverlayStatus(''),3000);
   return lg;
 }
 
@@ -1457,81 +1495,129 @@ async function fetchZoningLayer() {
   setOverlayStatus('Loading zoning cases...');
   const lg = L.layerGroup();
 
-  // Active/pending rezoning cases
-  const where = encodeURIComponent("STATUS IN ('Pending','In Review','Active','Approved','Filed')");
-  // Only last 2 years to keep it relevant
-  const sinceDate = new Date(Date.now() - (3 * 365 * 86400000)).toISOString().slice(0,10);
-  const whereDate = encodeURIComponent(`StatusDate > timestamp '${sinceDate} 00:00:00' OR STATUS='Pending' OR STATUS='In Review'`);
-  const fields = 'ZONE_CASE,Location,Acres,PrevZoning,ZON_REQ,STATUS,StatusDate,CASE_TYPE,CurrentInfoLink,IMAPS_Link,EG_Link';
-  const url = RALEIGH_BASE + `Rezoning_Case_Boundaries_View/FeatureServer/0/query?where=${whereDate}&outFields=${fields}&f=json&resultRecordCount=300&orderByFields=StatusDate+DESC`;
-  const r = await fetch(url, {signal: AbortSignal.timeout(10000)});
-  const data = await r.json();
+  // ── Rezoning Cases ───────────────────────────────────────────────────────
+  // CRITICAL: outSR=4326 converts from State Plane NC feet to WGS84 lat/lng
+  const sinceDate = new Date(Date.now() - (3*365*86400000)).toISOString().slice(0,10);
+  const zWhere = encodeURIComponent(
+    `StatusDate > timestamp '${sinceDate} 00:00:00' OR STATUS IN ('Pending','In Review','Active','Filed')`
+  );
+  const zFields = 'ZONE_CASE,Location,Acres,PrevZoning,ZON_REQ,STATUS,StatusDate,CASE_TYPE,CurrentInfoLink,IMAPS_Link,EG_Link';
+  const zUrl = RALEIGH_BASE +
+    `Rezoning_Case_Boundaries_View/FeatureServer/0/query?where=${zWhere}` +
+    `&outFields=${zFields}&outSR=4326&returnGeometry=true&f=json&resultRecordCount=300&orderByFields=StatusDate+DESC`;
 
-  // Also fetch active development plans
+  // ── Development Plans ────────────────────────────────────────────────────
   const dpWhere = encodeURIComponent("status IN ('Review In Progress','Pending','Filed','Submitted')");
   const dpFields = 'plan_name,plan_number,plan_type,status,major_street,developer,acreage,submitted,zoning';
-  const dpUrl = RALEIGH_BASE + `Development_Plans/FeatureServer/0/query?where=${dpWhere}&outFields=${dpFields}&f=json&resultRecordCount=200`;
-  const r2 = await fetch(dpUrl, {signal: AbortSignal.timeout(10000)});
-  const dpData = await r2.json();
+  const dpUrl = RALEIGH_BASE +
+    `Development_Plans/FeatureServer/0/query?where=${dpWhere}` +
+    `&outFields=${dpFields}&outSR=4326&returnGeometry=true&f=json&resultRecordCount=200`;
+
+  const [zData, dpData] = await Promise.all([
+    fetch(zUrl, {signal:AbortSignal.timeout(12000)}).then(r=>r.json()).catch(()=>({features:[]})),
+    fetch(dpUrl, {signal:AbortSignal.timeout(12000)}).then(r=>r.json()).catch(()=>({features:[]})),
+  ]);
+
+  const statusColor = s =>
+    s==='Pending'||s==='In Review'||s==='Filed' ? '#8E24AA' :
+    s==='Approved' ? '#2E7D32' : '#6A1B9A';
 
   let count = 0;
 
-  // Rezoning case polygons
-  for(const feat of (data.features || [])) {
+  // Rezoning case polygons + centroid pins
+  for(const feat of (zData.features||[])) {
     const a = feat.attributes;
     const geom = feat.geometry;
-    if(!geom?.rings) continue;
+    if(!geom?.rings?.length) continue;
 
-    const latlngs = geom.rings[0].map(([x,y]) => [y,x]);
-    const statusColor = a.STATUS === 'Pending' || a.STATUS === 'In Review' ? '#8E24AA' :
-                        a.STATUS === 'Approved' ? '#2E7D32' : '#6A1B9A';
-    const poly = L.polygon(latlngs, {
-      color: statusColor, weight: 2, fillColor: statusColor, fillOpacity: 0.1
-    });
-    const statusDate = a.StatusDate ? new Date(a.StatusDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-    poly.bindPopup(
-      `<span class="p-tag" style="background:${statusColor};color:#fff">REZONING</span>` +
-      `<div class="p-title">${a.ZONE_CASE||''} — ${a.ZON_REQ||'Requested'}</div>` +
-      `<div class="p-notes">${[a.Acres ? a.Acres.toFixed(1)+' acres' : '', a.PrevZoning ? 'From: '+a.PrevZoning : '', a.Location||''].filter(Boolean).join(' · ')}</div>` +
-      `<div class="p-meta">Status: ${a.STATUS||''} · ${statusDate}</div>` +
-      (a.CurrentInfoLink ? `<a class="p-link" href="${a.CurrentInfoLink}" target="_blank">Case details →</a>` : ''),
-      {maxWidth: 260}
-    );
-    // Center marker
-    try {
-      const center = L.polygon(latlngs).getBounds().getCenter();
-      const m = L.marker([center.lat, center.lng], {icon: makeZoningIcon()});
-      m.bindPopup(poly.getPopup().getContent(), {maxWidth:260});
-      lg.addLayer(m);
-    } catch(e){}
+    // outSR=4326 gives [lng,lat] pairs
+    const latlngs = geom.rings[0].map(([lng,lat])=>[lat,lng]);
+    if(!latlngs.length) continue;
+
+    // Validate coords are roughly in NC (bbox check)
+    const [lat0, lng0] = latlngs[0];
+    if(lat0 < 33 || lat0 > 37 || lng0 < -85 || lng0 > -75) continue;
+
+    const sc = statusColor(a.STATUS);
+    const dt = a.StatusDate ? new Date(a.StatusDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    const acres = a.Acres ? a.Acres.toFixed(1)+' ac' : '';
+
+    // Build rich popup
+    const caseLink = a.EG_Link || a.CurrentInfoLink || null;
+    const imapsLink = a.IMAPS_Link || null;
+    const engageLink = `https://engage.raleighnc.gov/rezoning`;
+
+    const popupHtml =
+      `<span class="p-tag" style="background:${sc};color:#fff">${a.STATUS||'REZONING'}</span>` +
+      `<div class="p-title">${a.ZONE_CASE||''} ${a.ZON_REQ ? '→ '+a.ZON_REQ : ''}</div>` +
+      (a.Location ? `<div class="p-meta">📍 ${a.Location}</div>` : '') +
+      `<div class="p-notes">` +
+        [acres, a.PrevZoning ? 'From '+a.PrevZoning : '', a.CASE_TYPE||''].filter(Boolean).join(' · ') +
+      `</div>` +
+      (dt ? `<div class="p-meta">Updated: ${dt}</div>` : '') +
+      `<div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">` +
+      (caseLink ? `<a class="p-link" href="${caseLink}" target="_blank">📋 Case details →</a>` : '') +
+      (imapsLink ? `<a class="p-link" href="${imapsLink}" target="_blank">🗺 View in iMAPS →</a>` : '') +
+      `<a class="p-link" href="${engageLink}" target="_blank">🔔 All active rezonings →</a>` +
+      `</div>`;
+
+    const poly = L.polygon(latlngs, {color:sc, weight:2, fillColor:sc, fillOpacity:0.15});
+    poly.bindPopup(popupHtml, {maxWidth:280});
     lg.addLayer(poly);
-    count++;
+
+    // Centroid pin
+    try {
+      const ctr = poly.getBounds().getCenter();
+      const m = L.marker([ctr.lat, ctr.lng], {icon: makeZoningIcon()});
+      m.bindPopup(popupHtml, {maxWidth:280});
+      lg.addLayer(m);
+      count++;
+    } catch(e){}
   }
 
   // Development plan points
-  for(const feat of (dpData.features || [])) {
+  for(const feat of (dpData.features||[])) {
     const a = feat.attributes;
     const geom = feat.geometry;
-    if(!geom?.x || !geom?.y) continue;
-    const submitted = a.submitted ? new Date(a.submitted).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '';
-    const m = L.marker([geom.y, geom.x], {icon: makeZoningIcon()});
-    m.bindPopup(
+    let lat, lng;
+
+    if(geom?.rings?.length) {
+      const pts = geom.rings[0].map(([lo,la])=>[la,lo]);
+      if(!pts.length) continue;
+      const [la0, lo0] = pts[0];
+      if(la0<33||la0>37||lo0<-85||lo0>-75) continue;
+      const poly = L.polygon(pts);
+      const ctr = poly.getBounds().getCenter();
+      lat=ctr.lat; lng=ctr.lng;
+    } else if(geom?.x && geom?.y) {
+      lat=geom.y; lng=geom.x;
+    } else continue;
+
+    const dt = a.submitted ? new Date(a.submitted).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '';
+    const popupHtml =
       `<span class="p-tag" style="background:#8E24AA;color:#fff">DEV PLAN</span>` +
       `<div class="p-title">${a.plan_name||a.plan_number||'Development Plan'}</div>` +
-      `<div class="p-notes">${[a.plan_type, a.major_street ? 'Near '+a.major_street.trim() : '', a.acreage ? a.acreage.toFixed(1)+' ac' : '', a.developer||''].filter(Boolean).join(' · ')}</div>` +
-      `<div class="p-meta">Status: ${a.status||''} · Submitted ${submitted}</div>`,
-      {maxWidth: 260}
-    );
+      (a.major_street ? `<div class="p-meta">📍 ${a.major_street}</div>` : '') +
+      `<div class="p-notes">` +
+        [a.plan_type||'', a.acreage ? a.acreage.toFixed(1)+' ac' : '', a.zoning||''].filter(Boolean).join(' · ') +
+      `</div>` +
+      (a.developer ? `<div class="p-meta">Developer: ${a.developer}</div>` : '') +
+      (dt ? `<div class="p-meta">Submitted: ${dt} · Status: ${a.status||''}</div>` : '') +
+      `<div style="margin-top:6px">` +
+      `<a class="p-link" href="https://engage.raleighnc.gov/rezoning" target="_blank">🔔 View active cases →</a>` +
+      `</div>`;
+
+    const m = L.marker([lat,lng], {icon:makeZoningIcon()});
+    m.bindPopup(popupHtml, {maxWidth:280});
     lg.addLayer(m);
     count++;
   }
 
-  setOverlayStatus(`${count} zoning items loaded`);
-  setTimeout(() => setOverlayStatus(''), 3000);
+  setTimeout(()=>setOverlayStatus(''),3000);
+  setOverlayStatus(`✓ ${count} zoning/planning cases loaded`);
   return lg;
 }
 
-// ── Toggle handler ──────────────────────────────────────────────
 async function toggleOverlay(type, btn) {
   const isActive = overlayActive[type];
 
