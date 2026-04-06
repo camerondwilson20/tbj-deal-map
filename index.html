@@ -798,7 +798,7 @@ async function refreshFeed(isAuto=false){
           const rawMatch=rawHeadlines.find(h=>
             h.title.toLowerCase().includes(ds.title.toLowerCase().substring(0,40)));
           const isBreaking=!!(rawMatch&&rawMatch.isBreaking)||isTroyer;
-          const link='https://www.bizjournals.com/triangle';
+          const link=tbJUrl(ds.title,dateIso);
           const dispTitle=(isBreaking?'\ud83d\udea8 ':'')+ds.title.substring(0,160);
           // Only pin if we have a SPECIFIC pinnable location (in PLACES) or precise geocode
           const pinnableLoc = preciseLat ? detectedLoc : (detectedLoc && findPlace(detectedLoc) ? detectedLoc : null);
@@ -928,12 +928,18 @@ async function addStory(){
 
 // ── Render ─────────────────────────────────────────────────────
 function getFiltered(){
-  let s=allStories;
+  let s=allStories.slice();
   if(activeFilter!=='all')s=s.filter(x=>x.tag===activeFilter);
   if(activeDays!=='all'){
     const cut=Date.now()-parseInt(activeDays)*86400000;
     s=s.filter(x=>x.manual||dateMs(x.date)>cut);
   }
+  // Sort by date descending — most recent first; manual pins always on top
+  s.sort((a,b)=>{
+    if(a.manual&&!b.manual)return -1;
+    if(!a.manual&&b.manual)return 1;
+    return dateMs(b.date)-dateMs(a.date);
+  });
   return s;
 }
 
@@ -967,7 +973,7 @@ function renderAll(){
       `<div class="smeta">${story.loc||'Triangle'} &middot; ${fmtDate(story.date)}</div>`+
       (story._precise ? `<div class="geo-exact">📍 ${story.address}</div>` : '')+
       (story.notes?`<div class="snotes">${story.notes}</div>`:'')+
-      (story.link?`<a class="slink" href="${story.link}" target="_blank">Read on TBJ &rarr;</a>`:'')+
+      (story.link?`<a class="slink" href="${story.link===('https://www.bizjournals.com/triangle')?tbJUrl(story.title,story.date):story.link}" target="_blank">Read on TBJ &rarr;</a>`:'')+
       `<div class="ssource">${sourceLabel}</div>`;
 
     if(place || story._lat){
@@ -983,7 +989,7 @@ function renderAll(){
         `<div class="p-meta">${fmtDate(story.date)}</div>`+
         geoLabel+
         (story.notes?`<div class="p-notes">${story.notes}</div>`:'')+
-        (story.link?`<a class="p-link" href="${story.link}" target="_blank">Read full story on TBJ &rarr;</a>`:'')+
+        (story.link?`<a class="p-link" href="${story.link==='https://www.bizjournals.com/triangle'?tbJUrl(story.title,story.date):story.link}" target="_blank">Read full story on TBJ &rarr;</a>`:'')+
         `<div class="p-source">${sourceLabel}</div>`,
         {maxWidth:260}
       );
@@ -1879,6 +1885,25 @@ async function runAreaIntel(){
 
 
 // ── Boot ───────────────────────────────────────────────────────
+// Generate direct TBJ article URL from headline + date
+function tbJUrl(title, dateStr){
+  try{
+    const d = new Date(dateStr);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    // Slugify: lowercase, replace non-alphanumeric with hyphens, collapse, trim
+    const cleanTitle = title.split(/\s*[—–‒]\s*/)[0].trim();
+    const slug = cleanTitle.toLowerCase()
+      .replace(/[^a-z0-9]+/g,'-')
+      .replace(/^-+|-+$/g,'')
+      .substring(0,80);
+    return 'https://www.bizjournals.com/triangle/news/'+yyyy+'/'+mm+'/'+dd+'/'+slug+'.html';
+  }catch(e){
+    return 'https://www.bizjournals.com/triangle';
+  }
+}
+
 function boot(){
   initMap();
 
@@ -1974,7 +1999,7 @@ function renderNews() {
       </div>
       <h4>${s.title}</h4>
       ${s.notes ? `<div class="news-notes">${s.notes}</div>` : ''}
-      ${s.link ? `<a href="${s.link}" target="_blank">Read on TBJ →</a>` : ''}
+      ${s.link ? `<a href="${s.link===('https://www.bizjournals.com/triangle')?tbJUrl(s.title,s.date):s.link}" target="_blank">Read on TBJ →</a>` : ''}
     `;
     panel.appendChild(div);
   });
