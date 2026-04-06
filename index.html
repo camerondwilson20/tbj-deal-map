@@ -1885,20 +1885,14 @@ async function runAreaIntel(){
 
 
 // ── Boot ───────────────────────────────────────────────────────
-// Generate direct TBJ article URL from headline + date
+// Link to TBJ search for this headline — one click to the article, always works.
 function tbJUrl(title, dateStr){
   try{
-    const d = new Date(dateStr);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const dd = String(d.getDate()).padStart(2,'0');
-    // Slugify: lowercase, replace non-alphanumeric with hyphens, collapse, trim
-    const cleanTitle = title.split(/\s*[—–‒]\s*/)[0].trim();
-    const slug = cleanTitle.toLowerCase()
-      .replace(/[^a-z0-9]+/g,'-')
-      .replace(/^-+|-+$/g,'')
-      .substring(0,80);
-    return 'https://www.bizjournals.com/triangle/news/'+yyyy+'/'+mm+'/'+dd+'/'+slug+'.html';
+    // Strip emoji prefix and anything after em-dash (appended notes)
+    const clean = title.replace(/^[^a-zA-Z$0-9]+/,'').split(/\s*[\u2014\u2013\u2012]\s*/)[0].trim();
+    // Take first 5-6 meaningful words for a tight search
+    const words = clean.replace(/[^a-zA-Z0-9\s]/g,' ').trim().split(/\s+/).slice(0,6).join(' ');
+    return 'https://www.bizjournals.com/triangle/search?q='+encodeURIComponent(words)+'&s=start_time&sd=desc';
   }catch(e){
     return 'https://www.bizjournals.com/triangle';
   }
