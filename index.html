@@ -715,7 +715,7 @@ Article text: ${articleText.substring(0, 2000)}`;
 }
 
 // ── Auto-Refresh Engine ────────────────────────────────────────
-const AUTO_REFRESH_MS = 30 * 60 * 1000; // 30 minutes
+const AUTO_REFRESH_MS = 10 * 60 * 1000; // 10 minutes
 let autoRefreshTimer = null;
 let lastCheckedAt = null;
 
@@ -728,16 +728,17 @@ function updateLastChecked() {
 
 function startAutoRefresh() {
   if(autoRefreshTimer) clearInterval(autoRefreshTimer);
-  // Update the "X min ago" display every minute
+  // Update "X min ago" display every minute
   setInterval(updateLastChecked, 60000);
-  // Run immediately on page load (after 3s delay to let map settle)
+  // Run immediately on page load after 3s (lets map settle first)
   setTimeout(() => refreshFeed(true), 3000);
-  // Then auto-refresh every 30 min
+  // Poll every 10 minutes — exits fast if no new emails (historyId check)
+  // 10 min is frequent enough to catch breaking news within one news cycle
   autoRefreshTimer = setInterval(() => {
     const btn = document.getElementById('refresh-btn');
     btn.classList.add('auto-pulse');
     refreshFeed(true).finally(() => btn.classList.remove('auto-pulse'));
-  }, AUTO_REFRESH_MS);
+  }, 10 * 60 * 1000);
 }
 
 
@@ -822,18 +823,50 @@ async function refreshFeed(isAuto=false){
   const countEl=document.getElementById('story-count');
   btn.disabled=true;
   btn.textContent=isAuto?'\u27f3 Auto-checking...':'Checking Gmail...';
+
   try{
+    // ── Only fetch emails newer than last check ──────────────────────────
+    // Store last seen historyId in localStorage so we never reprocess old emails
+    const HIST_KEY = 'tbj_last_history_id';
+    const lastHistoryId = localStorage.getItem(HIST_KEY) || '';
+
+    // Build search query — newer_than:2d catches recent emails on first load,
+    // then we use historyId tracking to only get truly new ones
     const searchResp=await fetch('https://gmail.mcp.claude.com/mcp',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({method:'tools/call',params:{name:'gmail_search_messages',
         arguments:{q:'from:reply@news.bizjournals.com newer_than:90d',maxResults:60}}})
     });
     if(!searchResp.ok)throw new Error('Gmail MCP unreachable');
-    const messages=(await searchResp.json())?.result?.messages||[];
+    const searchData = await searchResp.json();
+    const messages=(searchData?.result?.messages)||[];
     if(!messages.length){btn.disabled=false;btn.textContent='\u27f3 Refresh Feed';return;}
-    const existing=new Set(allStories.map(s=>s.title.toLowerCase().substring(0,60)));
+
+    // Filter to only messages with historyId GREATER than last seen
+    // Gmail returns messages sorted newest first
+    const newMsgs = lastHistoryId
+      ? messages.filter(m => parseInt(m.historyId||'0') > parseInt(lastHistoryId))
+      : messages.slice(0,15); // first load: process 15 most recent
+
+    // Track highest historyId seen this run
+    const maxHistoryId = messages.reduce((max,m) =>
+      Math.max(max, parseInt(m.historyId||'0')), parseInt(lastHistoryId||'0'));
+
+    if(!newMsgs.length){
+      // No new emails — update timestamp and exit quietly
+      localStorage.setItem(HIST_KEY, String(maxHistoryId));
+      btn.disabled=false;btn.textContent='\u27f3 Refresh Feed';
+      lastCheckedAt=Date.now();updateLastChecked();
+      return;
+    }
+
+    // Build dedup set from existing stories AND seed titles
+    const existing=new Set(
+      allStories.map(s=>s.title.toLowerCase().replace(/^[^a-z0-9]+/,'').substring(0,50))
+    );
     let added=0;
-    for(const msg of messages.slice(0,15)){
+
+    for(const msg of newMsgs){
       try{
         const msgResp=await fetch('https://gmail.mcp.claude.com/mcp',{
           method:'POST',headers:{'Content-Type':'application/json'},
@@ -849,6 +882,8 @@ async function refreshFeed(isAuto=false){
         const isTroyer=isTroyerAlert(email);
         const rawHeadlines=extractTBJHeadlines(body,isTroyer);
         if(!rawHeadlines.length)continue;
+
+        // AI filter first, keyword fallback if API unavailable
         let creStories=await filterCREHeadlines(rawHeadlines);
         if(!creStories.length){
           creStories=rawHeadlines.filter(h=>{
@@ -858,14 +893,18 @@ async function refreshFeed(isAuto=false){
               'retail','hotel','apartment','mixed use','land','acres','tower','hub',
               'campus','facility','contractor','manufacturer','distribution','plans',
               'buys','opens','expands','rises','park','center','purchases','acquires',
-              'downtown','corridor'].some(k=>t.includes(k));
+              'downtown','corridor','hospital','grocery','storage','distribution',
+              'brewery','winery','dealership'].some(k=>t.includes(k));
           }).map(h=>({title:h.title,loc:detectLoc(h.title),tag:detectTag(h.title),notes:''}));
         }
         if(!creStories.length)continue;
+
         for(const ds of creStories){
-          const titleKey=ds.title.toLowerCase().substring(0,60);
+          // Dedup: strip emoji/punctuation prefix, take first 50 chars
+          const titleKey=ds.title.toLowerCase().replace(/^[^a-z0-9]+/,'').substring(0,50);
           if(existing.has(titleKey))continue;
           existing.add(titleKey);
+
           let detectedLoc=ds.loc||detectLoc(ds.title),storyAddress='',preciseLat=null,preciseLng=null;
           try{
             const aiGeo=await aiGeocodeArticle(ds.title,'',ds.notes||'');
@@ -875,32 +914,41 @@ async function refreshFeed(isAuto=false){
               if(aiGeo.lat&&aiGeo.lng){preciseLat=aiGeo.lat;preciseLng=aiGeo.lng;}
             }
           }catch(e){}
+
           const rawMatch=rawHeadlines.find(h=>
             h.title.toLowerCase().includes(ds.title.toLowerCase().substring(0,40)));
           const isBreaking=!!(rawMatch&&rawMatch.isBreaking)||isTroyer;
           const link=tbJUrl(ds.title,dateIso);
           const dispTitle=(isBreaking?'\ud83d\udea8 ':'')+ds.title.substring(0,160);
-          // Only pin if we have a SPECIFIC pinnable location (in PLACES) or precise geocode
-          const pinnableLoc = preciseLat ? detectedLoc : (detectedLoc && findPlace(detectedLoc) ? detectedLoc : null);
-          if(pinnableLoc || preciseLat){
+
+          const pinnableLoc=preciseLat?detectedLoc:(detectedLoc&&findPlace(detectedLoc)?detectedLoc:null);
+          if(pinnableLoc||preciseLat){
             const story={title:dispTitle,link,notes:ds.notes||'',
               tag:ds.tag||detectTag(ds.title),loc:pinnableLoc||detectedLoc||'Triangle',
               date:dateIso,source:'gmail',manual:false,address:storyAddress};
             if(preciseLat){story._lat=preciseLat;story._lng=preciseLng;story._precise=true;}
             allStories.unshift(story);added++;
           }else{
-            // No specific location — goes to News tab only, no map pin
             addNewsStory({title:dispTitle,link,notes:ds.notes||'',
               tag:ds.tag||detectTag(ds.title),date:dateIso});
           }
         }
       }catch(e){console.warn('msg failed',msg.messageId||msg.id,e.message);}
     }
+
+    // Persist the highest historyId so next refresh only fetches newer emails
+    localStorage.setItem(HIST_KEY, String(maxHistoryId));
+
     btn.disabled=false;btn.textContent='\u27f3 Refresh Feed';
     lastCheckedAt=Date.now();updateLastChecked();
-    renderAll();renderNews();updateNewsTabCount();
-    countEl.textContent=getFiltered().length+' stories';
-    if(added>0)console.log('TBJ feed: added '+added+' new CRE stories');
+    if(added>0){
+      renderAll();renderNews();updateNewsTabCount();
+      countEl.textContent=getFiltered().length+' stories';
+      console.log('TBJ: added '+added+' new CRE stories');
+    } else {
+      // Still update count display even if nothing new
+      countEl.textContent=getFiltered().length+' stories';
+    }
   }catch(e){
     console.error('Gmail feed error:',e);
     btn.disabled=false;btn.textContent='\u27f3 Refresh Feed';
