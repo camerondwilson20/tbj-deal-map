@@ -197,8 +197,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink);hei
     <button class="ovl-btn permits" data-overlay="permits" onclick="toggleOverlay('permits',this)">
       <span class="ovl-dot" style="background:#1E88E5"></span> Filed Permits
     </button>
-    <button class="ovl-btn zoning" data-overlay="zoning" onclick="toggleOverlay('zoning',this)">
-      <span class="ovl-dot" style="background:#8E24AA"></span> Zoning / Rezoning
+    <button class="ovl-btn zoning" data-overlay="zoning" onclick="toggleOverlay('zoning',this)" title="Recently decided rezoning cases + active development plans. Raleigh's public data only tracks rezoning outcomes (Approved/Denied/Withdrawn), not in-flight cases — the popup links to engage.raleighnc.gov for those.">
+      <span class="ovl-dot" style="background:#8E24AA"></span> Zoning / Dev Plans
     </button>
     <span id="overlay-status"></span>
     <div id="overlay-filters">
@@ -1223,67 +1223,12 @@ function setOverlayStatus(msg) {
   if(el) el.textContent = msg;
 }
 
-async function fetchDotLayer() {
-  setOverlayStatus('Loading DOT projects...');
-  const lg = L.layerGroup();
-
-  // NCDOT projects from Raleigh's CBN layer (confirmed working, no CORS issues)
-  const url = RALEIGH_BASE + 'CBN_NCDOT_Projects/FeatureServer/0/query?where=1%3D1&outFields=ProjectID,URL&f=json&resultRecordCount=200';
-  const r = await fetch(url, {signal: AbortSignal.timeout(10000)});
-  const data = await r.json();
-
-  for(const feat of (data.features || [])) {
-    const attr = feat.attributes;
-    const geom = feat.geometry;
-    if(!geom) continue;
-
-    // Convert rings polygon to Leaflet
-    let latlngs;
-    if(geom.rings) {
-      latlngs = geom.rings[0].map(([x,y]) => [y,x]);
-      const poly = L.polygon(latlngs, {
-        color: '#FF8C00', weight: 2.5, fillColor: '#FF8C00',
-        fillOpacity: 0.08, dashArray: '6 4'
-      });
-      poly.bindPopup(
-        `<span class="p-tag" style="background:#FF8C00;color:#fff">NCDOT</span>` +
-        `<div class="p-title">Project ${attr.ProjectID}</div>` +
-        `<div class="p-meta">NCDOT Transportation Improvement Program</div>` +
-        (attr.URL ? `<a class="p-link" href="${attr.URL}" target="_blank">View project details →</a>` : ''),
-        {maxWidth: 240}
-      );
-      lg.addLayer(poly);
-
-      // Also place a centered label marker
-      try {
-        const bounds = L.polygon(latlngs).getBounds();
-        const center = bounds.getCenter();
-        const m = L.marker([center.lat, center.lng], {icon: makeDotIcon()});
-        m.bindPopup(
-          `<span class="p-tag" style="background:#FF8C00;color:#fff">NCDOT</span>` +
-          `<div class="p-title">Project ${attr.ProjectID}</div>` +
-          (attr.URL ? `<a class="p-link" href="${attr.URL}" target="_blank">View project details →</a>` : ''),
-          {maxWidth: 220}
-        );
-        lg.addLayer(m);
-      } catch(e) {}
-    } else if(geom.x && geom.y) {
-      const m = L.marker([geom.y, geom.x], {icon: makeDotIcon()});
-      m.bindPopup(
-        `<span class="p-tag" style="background:#FF8C00;color:#fff">NCDOT</span>` +
-        `<div class="p-title">Project ${attr.ProjectID}</div>` +
-        (attr.URL ? `<a class="p-link" href="${attr.URL}" target="_blank">View project details →</a>` : ''),
-        {maxWidth: 220}
-      );
-      lg.addLayer(m);
-    }
-  }
-
-  setOverlayStatus(`${data.features?.length||0} DOT projects loaded`);
-  setTimeout(() => setOverlayStatus(''), 3000);
-  return lg;
-}
-
+// REMOVED (2026-09-28): a dead, shadowed first fetchDotLayer() definition used to
+// live here, querying Raleigh's raw CBN_NCDOT_Projects layer directly. JavaScript
+// keeps only the LAST function declaration with a given name in scope, and a second
+// fetchDotLayer() (below, using the hand-curated STIP_PROJECTS list + geocoding) was
+// defined further down — so this one never ran. Deleted rather than fixed, since the
+// STIP-based version is the real, working implementation.
 
 const STIP_PROJECTS = [
   // ── I-540 Beltway ────────────────────────────────────────────────────────
@@ -1487,8 +1432,19 @@ const STIP_PROJECTS = [
 ];
 
 
-// Cache geocoded DOT locations so they persist across toggles
-const dotGeoCache = {};
+// Cache geocoded DOT locations so they persist across toggles.
+// FIX (2026-09-28): this used to be an in-memory object only, wiped on every page
+// reload — meaning every visit re-geocoded all ~14+ STIP projects against Nominatim's
+// 1 req/sec limit (15+ seconds before the overlay felt "on"). Now backed by
+// localStorage so a repeat visit loads instantly; it only re-geocodes a project the
+// first time it's ever seen (or if you clear site data).
+const DOT_GEOCACHE_KEY = 'sas_dot_geocache_v1';
+let dotGeoCache = {};
+try { dotGeoCache = JSON.parse(localStorage.getItem(DOT_GEOCACHE_KEY) || '{}'); } catch(e) { dotGeoCache = {}; }
+
+function persistDotGeoCache() {
+  try { localStorage.setItem(DOT_GEOCACHE_KEY, JSON.stringify(dotGeoCache)); } catch(e) {}
+}
 
 async function geocodeDotProject(p) {
   if(dotGeoCache[p.id]) return dotGeoCache[p.id];
@@ -1502,6 +1458,7 @@ async function geocodeDotProject(p) {
       // Validate within Triangle bounding box
       if(lat > 35.0 && lat < 36.8 && lng > -80.5 && lng < -77.5) {
         dotGeoCache[p.id] = {lat, lng};
+        persistDotGeoCache();
         return {lat, lng};
       }
     }
@@ -1576,24 +1533,42 @@ async function fetchPermitsLayer() {
   const lg = L.layerGroup();
   let count = 0;
 
-  // ── Issued permits (last 31 days, non-residential, $100K+) ───────────────
+  // ── Issued permits (last 180 days, non-residential, $100K+) ───────────────
+  // FIX (2026-09-28, verified against live counts): the old query hit
+  // Building_Permits_Past_31_Days, which only caught 60 matching permits at any
+  // given moment. Building_Permits_Issued_Past_180_Days carries the same fields
+  // and returned 387 matching permits on the same filter — 6x the coverage. This
+  // is the "missing lots of cases" bug on the issued side.
+  //
+  // SIGNAL FILTER (2026-09-28): `workclassmapped` is only ever 'New' or 'Existing'
+  // — too coarse to separate "new building going up" from "tenant upfit inside an
+  // existing shell." The raw `workclass` field is granular (verified values:
+  // 'New Building','Shell Building','Addition','Foundation Only','Alteration/
+  // Repairs','Interior Completion','Change of Use','Deck/Porch', etc.) — filtering
+  // to the first four keeps genuine new-footprint / expansion projects and drops
+  // upfits, repairs, and small stuff, per Cam's "significant market intel only" ask.
+  const SIGNIFICANT_WORKCLASSES = "'New Building','Shell Building','Addition','Foundation Only'";
   const issuedWhere = encodeURIComponent(
-    "permitclassmapped='Non-Residential' AND latitude_perm IS NOT NULL AND estprojectcost>=100000"
+    `permitclassmapped='Non-Residential' AND latitude_perm IS NOT NULL AND estprojectcost>=100000 AND workclass IN (${SIGNIFICANT_WORKCLASSES})`
   );
   const issuedFields = 'permitnum,projectname,description,originaladdress1,originalcity,' +
-    'estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,landusedescription';
+    'estprojectcost,totalsqft,workclass,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,landusedescription';
   const issuedUrl = RALEIGH_BASE +
-    `Building_Permits_Past_31_Days/FeatureServer/0/query?where=${issuedWhere}` +
-    `&outFields=${issuedFields}&f=json&resultRecordCount=500&orderByFields=issueddate+DESC`;
+    `Building_Permits_Issued_Past_180_Days/FeatureServer/0/query?where=${issuedWhere}` +
+    `&outFields=${issuedFields}&f=json&resultRecordCount=1000&orderByFields=issueddate+DESC`;
 
   // ── Pending permits (non-residential, New construction, $250K+, since 2023) ──
+  // Verified: field names and filter here already matched real data (25 of 3,568
+  // pending permits) — this side wasn't broken, just a narrow filter by design.
+  // workclassmapped='New' here already excludes upfits (Pending only tracks new
+  // construction to begin with), so no further change needed on this side.
   const pendWhere = encodeURIComponent(
     "permitclassmapped='Non-Residential' AND workclassmapped='New' AND latitude_perm IS NOT NULL AND estprojectcost>=250000"
   );
   const pendFields = issuedFields;
   const pendUrl = RALEIGH_BASE +
     `Building_Permits_Pending/FeatureServer/0/query?where=${pendWhere}` +
-    `&outFields=${pendFields}&f=json&resultRecordCount=300&orderByFields=issueddate+DESC`;
+    `&outFields=${pendFields}&f=json&resultRecordCount=500&orderByFields=issueddate+DESC`;
 
   const [issuedData, pendData] = await Promise.all([
     fetch(issuedUrl, {signal:AbortSignal.timeout(12000)}).then(r=>r.json()).catch(()=>({features:[]})),
@@ -1666,21 +1641,46 @@ async function fetchZoningLayer() {
 
   // ── Rezoning Cases ───────────────────────────────────────────────────────
   // CRITICAL: outSR=4326 converts from State Plane NC feet to WGS84 lat/lng
-  const sinceDate = new Date(Date.now() - (3*365*86400000)).toISOString().slice(0,10);
+  // FIX (2026-09-28, verified against live service metadata): this layer's STATUS
+  // field only ever contains 'Approved' / 'Denied' / 'Withdrawn' — it is a record of
+  // DECIDED cases, not a queue of pending ones. The old query OR'd in
+  // STATUS IN ('Pending','In Review','Active','Filed'), none of which exist in this
+  // data — that clause matched zero rows, always. Genuinely pending/in-flight cases
+  // (e.g. Z-56-25) live only on the interactive engage.raleighnc.gov portal, which has
+  // no public REST feed — the popup below links there. What this layer IS good for:
+  // recently-DECIDED rezonings near a requirement, a leading indicator of upcoming
+  // development. Bump ZONING_LOOKBACK_YEARS if you want a longer or shorter window.
+  // FIX (2026-09-28): added a significance filter — Raleigh's zoning-code convention
+  // uses a plain 'R-' prefix for single-family residential districts (RX- is mixed-use/
+  // higher-intensity and is NOT excluded). Filtering out small single-family rezonings
+  // and requiring 2+ acres cut 66 cases (12mo) down to 29 genuinely market-moving ones
+  // (verified live: 61 AC REX Hospital, 58 AC commercial, 44 AC industrial corridor, etc.)
+  const ZONING_LOOKBACK_YEARS = 3;
+  const ZONING_MIN_ACRES = 2;
+  const sinceDate = new Date(Date.now() - (ZONING_LOOKBACK_YEARS*365*86400000)).toISOString().slice(0,10);
   const zWhere = encodeURIComponent(
-    `StatusDate > timestamp '${sinceDate} 00:00:00' OR STATUS IN ('Pending','In Review','Active','Filed')`
+    `StatusDate > timestamp '${sinceDate} 00:00:00' AND Acres >= ${ZONING_MIN_ACRES} AND ZON_REQ NOT LIKE 'R-%'`
   );
   const zFields = 'ZONE_CASE,Location,Acres,PrevZoning,ZON_REQ,STATUS,StatusDate,CASE_TYPE,CurrentInfoLink,IMAPS_Link,EG_Link';
   const zUrl = RALEIGH_BASE +
     `Rezoning_Case_Boundaries_View/FeatureServer/0/query?where=${zWhere}` +
-    `&outFields=${zFields}&outSR=4326&returnGeometry=true&f=json&resultRecordCount=300&orderByFields=StatusDate+DESC`;
+    `&outFields=${zFields}&outSR=4326&returnGeometry=true&f=json&resultRecordCount=1000&orderByFields=StatusDate+DESC`;
 
   // ── Development Plans ────────────────────────────────────────────────────
-  const dpWhere = encodeURIComponent("status IN ('Review In Progress','Pending','Filed','Submitted')");
+  // FIX (2026-09-28, verified against live service metadata): actual `status` values
+  // in this layer are Active / Approved / In Review / Review In Progress / Review
+  // Complete / Review Expired. The old filter asked for 'Pending','Filed','Submitted'
+  // — none of which exist — so it only ever matched the small 'Review In Progress'
+  // slice (419 of 6,712 plans). Corrected to the real in-flight statuses, plus a size
+  // and recency floor so the layer stays a CRE-actionable shortlist (~100 plans)
+  // instead of dumping all 5,600+ active plans (most are small residential/ADU cases).
+  const dpWhere = encodeURIComponent(
+    "status IN ('Active','In Review','Review In Progress') AND acreage >= 1 AND submitted_yr >= 2024"
+  );
   const dpFields = 'plan_name,plan_number,plan_type,status,major_street,developer,acreage,submitted,zoning';
   const dpUrl = RALEIGH_BASE +
     `Development_Plans/FeatureServer/0/query?where=${dpWhere}` +
-    `&outFields=${dpFields}&outSR=4326&returnGeometry=true&f=json&resultRecordCount=200`;
+    `&outFields=${dpFields}&outSR=4326&returnGeometry=true&f=json&resultRecordCount=300`;
 
   const [zData, dpData] = await Promise.all([
     fetch(zUrl, {signal:AbortSignal.timeout(12000)}).then(r=>r.json()).catch(()=>({features:[]})),
@@ -2092,10 +2092,18 @@ async function runAreaIntel(){
   // Parallel fetch all sources
   const [salesData,permitsIssuedData,permitsPendingData,zoningData,devPlansData,femaData] = await Promise.all([
     safeJson(wbase+`Parcels/MapServer/0/query?where=SALE_DATE+>+date+'${new Date(Date.now()-3*365*86400000).toISOString().slice(0,10)}'+AND+LAND_CODE+IN+('C','D','V','F')+AND+TOTSALPRICE+>+0${geom}&outFields=OWNER,SITE_ADDRESS,TOTSALPRICE,SALE_DATE,TOTAL_VALUE_ASSD,CALC_AREA,TYPE_USE_DECODE,LAND_CLASS_DECODE,PIN_NUM,REID&f=json&resultRecordCount=200&orderByFields=TOTSALPRICE+DESC&outSR=4326`),
-    safeJson(rbase+`Building_Permits_Past_31_Days/FeatureServer/0/query?where=permitclassmapped%3D'Non-Residential'+AND+latitude_perm+IS+NOT+NULL+AND+(workclassmapped%3D'New'+OR+estprojectcost+>%3D+100000)${geom}&outFields=permitnum,projectname,description,originaladdress1,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,pin&f=json&resultRecordCount=50&orderByFields=estprojectcost+DESC&outSR=4326`),
+    // FIX (2026-09-28): Past_31_Days -> Issued_Past_180_Days, same reason as the
+    // toggleable Permits overlay above (6x more coverage, verified against live counts).
+    safeJson(rbase+`Building_Permits_Issued_Past_180_Days/FeatureServer/0/query?where=permitclassmapped%3D'Non-Residential'+AND+latitude_perm+IS+NOT+NULL+AND+(workclassmapped%3D'New'+OR+estprojectcost+>%3D+100000)${geom}&outFields=permitnum,projectname,description,originaladdress1,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,issueddate,latitude_perm,longitude_perm,pin&f=json&resultRecordCount=200&orderByFields=estprojectcost+DESC&outSR=4326`),
     safeJson(rbase+`Building_Permits_Pending/FeatureServer/0/query?where=permitclassmapped%3D'Non-Residential'+AND+latitude_perm+IS+NOT+NULL+AND+(workclassmapped%3D'New'+OR+estprojectcost+>%3D+250000)+AND+applieddate+>%3D+timestamp+'2020-01-01+00:00:00'${geom}&outFields=permitnum,projectname,description,originaladdress1,estprojectcost,totalsqft,workclassmapped,statuscurrentmapped,applieddate,latitude_perm,longitude_perm,pin&f=json&resultRecordCount=100&orderByFields=estprojectcost+DESC&outSR=4326`),
+    // NOTE: this layer's STATUS is Approved/Denied/Withdrawn only (see fetchZoningLayer
+    // fix above) — this returns recently-DECIDED cases near the searched address, not
+    // pending ones. Left as a date filter only; no working "pending" filter exists here.
     safeJson(rbase+`Rezoning_Case_Boundaries_View/FeatureServer/0/query?where=StatusDate+>+timestamp+'2022-01-01+00:00:00'${geom}&outFields=ZONE_CASE,ZON_REQ,STATUS,Acres,PrevZoning,StatusDate,CurrentInfoLink,IMAPS_Link,EG_Link&f=json&resultRecordCount=30&outSR=4326`),
-    safeJson(rbase+`Development_Plans/FeatureServer/0/query?where=status+IN+('Review+In+Progress','Pending','Filed','Submitted')${geom}&outFields=plan_name,plan_number,plan_type,status,major_street,developer,acreage,submitted&f=json&resultRecordCount=20&outSR=4326`),
+    // FIX (2026-09-28): real status values are Active/Approved/In Review/Review In
+    // Progress/Review Complete/Review Expired — 'Pending'/'Filed'/'Submitted' don't
+    // exist, so this only ever matched the small "Review In Progress" slice.
+    safeJson(rbase+`Development_Plans/FeatureServer/0/query?where=status+IN+('Active','In+Review','Review+In+Progress')+AND+acreage+>%3D+1${geom}&outFields=plan_name,plan_number,plan_type,status,major_street,developer,acreage,submitted&f=json&resultRecordCount=50&outSR=4326`),
     safeJson(`https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query?geometry=${bbox}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE,ZONE_SUBTY&f=json&resultRecordCount=20`),
   ]);
 
